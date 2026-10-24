@@ -1,0 +1,1311 @@
+{
+ "id": "edge",
+ "title": "Edge & DNS",
+ "oneLiner": "Route 53 decides <b>which IP</b>. CloudFront <b>caches and speeds up HTTP</b>. Global Accelerator is a <b>fast on-ramp for any TCP/UDP</b>, with static IPs and failover that doesn't wait on DNS.",
+ "notes": [
+  {
+   "type": "h2",
+   "text": "Three services, three jobs",
+   "weak": "trio"
+  },
+  {
+   "type": "p",
+   "html": "Every question about these three comes down to four checks: <b>is it HTTP?</b>, <b>does it need caching?</b>, <b>does it need static IPs?</b>, and <b>how fast must failover be?</b>"
+  },
+  {
+   "type": "diagram",
+   "src": "content/diagrams/edge-request-path.svg",
+   "caption": "Where each service sits in one request"
+  },
+  {
+   "type": "table",
+   "head": [
+    "",
+    "Route 53",
+    "CloudFront",
+    "Global Accelerator"
+   ],
+   "rows": [
+    [
+     "Job",
+     "Answers \"which IP?\"",
+     "Caches + accelerates HTTP(S)",
+     "On-ramp to the AWS backbone"
+    ],
+    [
+     "Caches?",
+     "No",
+     "<b>Yes</b>",
+     "No"
+    ],
+    [
+     "Protocols",
+     "DNS",
+     "HTTP, HTTPS, WebSocket",
+     "<b>Any TCP/UDP</b> (HTTPS included)"
+    ],
+    [
+     "Static IPs",
+     "No",
+     "No",
+     "<b>2 anycast IPs</b>"
+    ],
+    [
+     "Failover speed",
+     "DNS TTL, and clients may cache longer",
+     "Origin group, per request (GET/HEAD/OPTIONS only)",
+     "<b>Seconds</b>, no DNS involved"
+    ],
+    [
+     "WAF attaches?",
+     "No",
+     "<b>Yes</b>",
+     "No (protect the ALB behind it)"
+    ],
+    [
+     "Classic trigger",
+     "\"by country\", \"10% canary\", \"latency-based\"",
+     "\"cache\", \"reduce origin load\", \"global HTTP\"",
+     "\"UDP\", \"static IP allowlist\", \"instant failover\""
+    ]
+   ]
+  },
+  {
+   "type": "diagram",
+   "src": "content/diagrams/edge-decision.svg",
+   "caption": "Pick one in three questions"
+  },
+  {
+   "type": "traps",
+   "items": [
+    "<b>\"Dynamic content\" does not rule out CloudFront.</b> With TTL 0 it still terminates TLS at the edge and rides the backbone to the origin. Rule it out only for non-HTTP traffic or a static-IP requirement.",
+    "<b>Global Accelerator handles HTTPS fine.</b> HTTPS runs on TCP. GA just doesn't look inside it or cache it.",
+    "<b>Mobile apps cache DNS.</b> So Route 53 weighted blue/green shifts slowly for them. GA swaps endpoints (traffic dials, endpoint weights) without DNS changes.",
+    "<b>CloudFront origin failover only retries GET, HEAD and OPTIONS.</b> An API that takes POSTs needs GA or Route 53 for regional failover.",
+    "<b>They stack.</b> Route 53 → CloudFront → ALB is a normal answer. Read what the question actually constrains."
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "UDP, gaming, VoIP, IoT + global",
+     "Global Accelerator"
+    ],
+    [
+     "\"static IP\" / \"allowlist 2 IPs\"",
+     "Global Accelerator"
+    ],
+    [
+     "\"instant failover\" / \"DNS caching is a problem\"",
+     "Global Accelerator"
+    ],
+    [
+     "\"cache\" / \"reduce load on origin\" / \"CDN\"",
+     "CloudFront"
+    ],
+    [
+     "\"global users, HTTP, dynamic content\"",
+     "CloudFront (TTL 0)"
+    ],
+    [
+     "\"route by country / weight / latency\"",
+     "Route 53"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Records: Alias vs CNAME vs A",
+   "weak": "alias"
+  },
+  {
+   "type": "table",
+   "head": [
+    "Record",
+    "Points to",
+    "At the apex (example.com)?",
+    "Cost"
+   ],
+   "rows": [
+    [
+     "<b>Alias</b>",
+     "AWS resources: ALB/NLB, CloudFront, S3 website, API Gateway, Global Accelerator, VPC interface endpoint, Elastic Beanstalk, another record in the zone",
+     "<b>Yes</b>",
+     "Free queries to AWS targets"
+    ],
+    [
+     "<b>CNAME</b>",
+     "Any hostname (e.g. an RDS endpoint)",
+     "<b>No, never</b>",
+     "Queries billed"
+    ],
+    [
+     "<b>A / AAAA</b>",
+     "An IP address (e.g. an Elastic IP)",
+     "Yes",
+     "Queries billed"
+    ]
+   ]
+  },
+  {
+   "type": "traps",
+   "items": [
+    "<b>Apex → a single EC2:</b> a plain A record to its Elastic IP works. You don't need Alias, and you don't need an ALB unless you want load balancing.",
+    "You can't Alias to an EC2 instance or an RDS endpoint. EC2 gets an A record to its Elastic IP. RDS gets a CNAME.",
+    "Alias follows the target's IPs as they change, which is why ALB and CloudFront need it."
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"root / apex / naked domain\" → AWS resource",
+     "Alias"
+    ],
+    [
+     "\"point to RDS endpoint\"",
+     "CNAME"
+    ],
+    [
+     "\"apex → single EC2 with Elastic IP\"",
+     "A record"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Routing policies",
+   "weak": "r53-policies"
+  },
+  {
+   "type": "table",
+   "head": [
+    "Policy",
+    "Decides by",
+    "Pick it when the question says"
+   ],
+   "rows": [
+    [
+     "Simple",
+     "Nothing; returns the value(s)",
+     "One resource, no health checks"
+    ],
+    [
+     "Weighted",
+     "Percentages you set",
+     "\"10% canary\", \"blue/green via DNS\". Weight 0 = no traffic"
+    ],
+    [
+     "<b>Latency</b>",
+     "What's fastest for the user",
+     "\"lowest latency\", \"best performance\""
+    ],
+    [
+     "<b>Geolocation</b>",
+     "Where the user is (country/continent)",
+     "\"law\", \"compliance\", \"content per country\". Add a default record"
+    ],
+    [
+     "<b>Geoproximity</b>",
+     "Resource location + a <b>bias</b> dial",
+     "\"shift more traffic to one region\". A normal record (Traffic Flow optional)"
+    ],
+    [
+     "Failover",
+     "Health check on the primary",
+     "Active-passive, \"static sorry page\""
+    ],
+    [
+     "Multivalue",
+     "Up to 8 healthy records",
+     "Simple client-side spreading with health checks"
+    ],
+    [
+     "IP-based",
+     "Client CIDR blocks",
+     "\"route by ISP / client network\""
+    ]
+   ]
+  },
+  {
+   "type": "p",
+   "html": "The three you keep mixing up: <b>Geolocation is about law</b>, <b>Latency is about speed</b> (the closest region isn't always the fastest), and <b>Geoproximity is the only one with a bias knob</b>."
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"compliance\" / \"law\" / \"per country\"",
+     "Geolocation"
+    ],
+    [
+     "\"lowest latency\" / \"best performance\"",
+     "Latency"
+    ],
+    [
+     "\"bias\" / \"shift traffic toward a region\"",
+     "Geoproximity"
+    ],
+    [
+     "\"canary\" / \"10%\" / \"blue-green via DNS\"",
+     "Weighted"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Health checks and failover",
+   "weak": "failover"
+  },
+  {
+   "type": "table",
+   "head": [
+    "",
+    "Active-active",
+    "Active-passive"
+   ],
+   "rows": [
+    [
+     "Who serves",
+     "All healthy endpoints",
+     "Primary only, secondary waits"
+    ],
+    [
+     "Policy",
+     "Weighted, latency, multivalue… <b>not</b> Failover",
+     "<b>Failover</b> policy only"
+    ],
+    [
+     "When one fails",
+     "Its record stops being returned",
+     "Route 53 returns the secondary"
+    ],
+    [
+     "Typical answer",
+     "Two regions both live",
+     "ALB primary + S3 static error page"
+    ]
+   ]
+  },
+  {
+   "type": "traps",
+   "items": [
+    "There is no \"active-active failover policy\". The Failover policy is active-passive by definition.",
+    "Route 53 health checkers live on the internet. They can't reach a private IP. For a private resource, put a <b>CloudWatch alarm</b> on its metric and have the health check watch the alarm.",
+    "A health check can also watch other health checks (calculated checks)."
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"static error page if the site is down\"",
+     "Failover policy + S3 website"
+    ],
+    [
+     "\"health check a private resource\"",
+     "CloudWatch alarm + health check on the alarm"
+    ],
+    [
+     "\"both regions serve traffic\"",
+     "Weighted/latency + health checks (not Failover)"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "CloudFront essentials"
+  },
+  {
+   "type": "table",
+   "head": [
+    "Need",
+    "Feature"
+   ],
+   "rows": [
+    [
+     "Private S3, reachable only through CloudFront (uploads too)",
+     "<b>OAC</b> + bucket policy for the distribution. OAI is legacy"
+    ],
+    [
+     "Serve from a backup when the origin fails",
+     "<b>Origin group</b> (primary + secondary, e.g. CRR bucket)"
+    ],
+    [
+     "Different caching per path (/api/* vs /static/*)",
+     "<b>Cache behaviors</b>"
+    ],
+    [
+     "Low cache hit ratio",
+     "Trim the <b>cache key</b>: fewer headers, cookies, query strings"
+    ],
+    [
+     "One protected file",
+     "<b>Signed URL</b>"
+    ],
+    [
+     "Many protected files (a whole /premium/ area)",
+     "<b>Signed cookies</b>"
+    ],
+    [
+     "Change content now",
+     "Invalidation (first 1,000 paths/month free). Long term: versioned file names"
+    ],
+    [
+     "Users only in North America and Europe, cut cost",
+     "<b>Price Class 100</b>"
+    ],
+    [
+     "Block countries",
+     "Geo restriction (allow or block list)"
+    ],
+    [
+     "Custom HTTPS cert",
+     "ACM cert in <b>us-east-1</b>, whatever the origin's region"
+    ]
+   ]
+  },
+  {
+   "type": "table",
+   "head": [
+    "",
+    "CloudFront Functions",
+    "Lambda@Edge"
+   ],
+   "rows": [
+    [
+     "Runs at",
+     "All edge locations",
+     "Regional edge caches"
+    ],
+    [
+     "Language",
+     "JavaScript",
+     "Node.js, Python"
+    ],
+    [
+     "Max time",
+     "&lt; 1 ms",
+     "5 s (viewer) / 30 s (origin)"
+    ],
+    [
+     "Scale",
+     "Millions of req/s",
+     "Thousands of req/s"
+    ],
+    [
+     "Use for",
+     "Header rewrites, redirects, URL normalising, simple tokens",
+     "Auth calls, origin selection, network calls, body access"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"restrict S3 to CloudFront only\"",
+     "OAC"
+    ],
+    [
+     "\"one file\" vs \"many files\" restricted",
+     "Signed URL vs signed cookies"
+    ],
+    [
+     "\"users only in US and Europe, reduce cost\"",
+     "Price Class 100"
+    ],
+    [
+     "\"HTTPS cert for CloudFront\"",
+     "ACM in us-east-1"
+    ],
+    [
+     "\"simple header/URL rewrite, millions req/s\"",
+     "CloudFront Functions"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Where WAF attaches",
+   "weak": "waf"
+  },
+  {
+   "type": "p",
+   "html": "<b>One rule:</b> WAF reads HTTP requests (URLs, headers, bodies). So it only attaches to services that <b>speak HTTP</b> (layer 7). Anything that just forwards TCP/UDP packets (layer 4) can't use it."
+  },
+  {
+   "type": "table",
+   "head": [
+    "Attach WAF to…",
+    "WAF?",
+    "Why / what to do instead"
+   ],
+   "rows": [
+    [
+     "CloudFront",
+     "<b>Yes</b>",
+     "Most common answer. Blocks bad requests at the edge"
+    ],
+    [
+     "Application Load Balancer",
+     "<b>Yes</b>",
+     "HTTP load balancer"
+    ],
+    [
+     "API Gateway (REST)",
+     "<b>Yes</b>",
+     "HTTP APIs in front of Lambda etc."
+    ],
+    [
+     "AppSync, Cognito user pools, App Runner, Verified Access",
+     "<b>Yes</b>",
+     "Rare on the exam, but all HTTP"
+    ],
+    [
+     "Network Load Balancer",
+     "No",
+     "Layer 4. Put an ALB behind it and attach WAF there"
+    ],
+    [
+     "Global Accelerator",
+     "No",
+     "Layer 4. WAF goes on the ALB endpoint behind it"
+    ],
+    [
+     "EC2 instance",
+     "No",
+     "Put an ALB or CloudFront in front"
+    ],
+    [
+     "Route 53",
+     "No",
+     "DNS, not HTTP. For DDoS use Shield"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"SQL injection / XSS / rate limit / geo-block\"",
+     "WAF on CloudFront or ALB"
+    ],
+    [
+     "\"DDoS\" (L3/L4)",
+     "Shield (Advanced for response team + cost protection)"
+    ]
+   ]
+  }
+ ],
+ "questions": [
+  {
+   "id": "edge-01",
+   "weak": "trio",
+   "q": "A multiplayer game runs on EC2 behind NLBs in us-east-1 and eu-west-1 and uses UDP. Players worldwide report lag, and partner ISPs need exactly two fixed IP addresses to allowlist. What should the architect use?",
+   "options": [
+    {
+     "t": "CloudFront with both NLBs as origins",
+     "why": "CloudFront only speaks HTTP/HTTPS/WebSocket. UDP can't go through it, and it has no static IPs."
+    },
+    {
+     "t": "Global Accelerator with an endpoint group in each region",
+     "why": "Right. Any TCP/UDP, 2 static anycast IPs for the allowlist, and the AWS backbone cuts lag."
+    },
+    {
+     "t": "Route 53 latency-based routing to both NLBs",
+     "why": "It picks a region but doesn't speed up the path, and it hands out the NLBs' IPs (several per region), not two fixed ones."
+    },
+    {
+     "t": "Elastic IPs on each NLB, published to the partners",
+     "why": "That's at least one IP per AZ per region, not two, and traffic still crosses the public internet."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "edge-02",
+   "weak": "trio",
+   "q": "A news site serves personalised HTML that can't be cached, plus images and CSS that can. All of it is HTTP from one ALB in us-east-1. Readers in Asia see slow pages. Which change has the least operational overhead?",
+   "options": [
+    {
+     "t": "Global Accelerator in front of the ALB",
+     "why": "It would speed up the path, but it can't cache the images and CSS, so the origin keeps serving everything."
+    },
+    {
+     "t": "CloudFront with the ALB as origin: caching for static paths, TTL 0 for the HTML",
+     "why": "Right. Static files come from the edge, and the dynamic HTML still gets edge TLS and the backbone. \"Dynamic\" doesn't rule CloudFront out."
+    },
+    {
+     "t": "Route 53 latency routing",
+     "why": "There's only one region, so there's nothing to route between."
+    },
+    {
+     "t": "Deploy a copy of the stack in ap-southeast-1",
+     "why": "It would work, but it's the most overhead (a second stack, data sync)."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "edge-03",
+   "weak": "trio",
+   "q": "A company does blue/green releases by shifting Route 53 weighted records. Its mobile app clients keep hitting the old (blue) stack for hours after the switch because they cache DNS. How do they make the switch take effect almost immediately?",
+   "options": [
+    {
+     "t": "Set the record TTL to 0",
+     "why": "The clients are ignoring TTL already; that's the problem. A lower TTL doesn't fix clients that cache anyway."
+    },
+    {
+     "t": "Put Global Accelerator in front and shift traffic with endpoint weights / traffic dials",
+     "why": "Right. Clients keep the same 2 anycast IPs; GA moves traffic behind them with no DNS change."
+    },
+    {
+     "t": "Switch to Route 53 failover routing",
+     "why": "Still DNS, so it has the same caching problem."
+    },
+    {
+     "t": "Use a CloudFront origin group",
+     "why": "Origin groups are for failover on errors, not planned traffic shifting, and only for GET/HEAD/OPTIONS."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "edge-04",
+   "weak": "trio",
+   "q": "Product images in an S3 bucket get millions of GET requests a day from users worldwide. S3 request costs are high and far-away users see slow loads. What should the architect do?",
+   "options": [
+    {
+     "t": "Enable S3 Transfer Acceleration",
+     "why": "It speeds up transfers to and from the bucket but caches nothing, so every GET still hits S3 and request costs stay the same."
+    },
+    {
+     "t": "Put CloudFront in front of the bucket with OAC",
+     "why": "Right. CloudFront is the only one of these that caches. Fewer requests reach S3, and users are served from a nearby edge."
+    },
+    {
+     "t": "Put Global Accelerator in front of S3",
+     "why": "GA doesn't cache, and S3 isn't a GA endpoint type."
+    },
+    {
+     "t": "Use Route 53 geolocation routing to buckets in several regions",
+     "why": "That means replicating the data and adding overhead, and it still doesn't cache."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "edge-05",
+   "weak": "trio",
+   "q": "An HTTPS payments API (mostly POST requests) runs active-passive in two regions. If the primary region fails, traffic must move within seconds, with no wait for DNS caches to expire. Which option meets this?",
+   "options": [
+    {
+     "t": "CloudFront with an origin group (primary + secondary region)",
+     "why": "Origin failover only retries GET, HEAD and OPTIONS. POST requests would fail."
+    },
+    {
+     "t": "Route 53 failover routing with a 60-second TTL",
+     "why": "Still DNS-based. Clients and resolvers can cache past the TTL."
+    },
+    {
+     "t": "Global Accelerator with an endpoint group per region",
+     "why": "Right. GA health checks move traffic in seconds behind the same static IPs. It handles HTTPS (it's TCP) for any method."
+    },
+    {
+     "t": "Multivalue answer routing",
+     "why": "DNS again, and it's for spreading load, not fast failover."
+    }
+   ],
+   "answer": [
+    2
+   ]
+  },
+  {
+   "id": "edge-06",
+   "weak": "trio",
+   "multi": true,
+   "q": "A global shop needs product images cached near users AND SQL-injection attempts blocked before they reach its region. Which TWO should it use? (Choose TWO.)",
+   "options": [
+    {
+     "t": "CloudFront distribution in front of the ALB",
+     "why": "Right. It caches the images at the edge."
+    },
+    {
+     "t": "AWS WAF web ACL on the CloudFront distribution",
+     "why": "Right. WAF on CloudFront blocks bad requests at the edge, before they reach the region."
+    },
+    {
+     "t": "Global Accelerator",
+     "why": "It doesn't cache, and WAF can't attach to it."
+    },
+    {
+     "t": "AWS WAF on a Network Load Balancer",
+     "why": "WAF can't attach to an NLB."
+    },
+    {
+     "t": "Shield Standard on its own",
+     "why": "Shield is for DDoS at layers 3/4. It doesn't inspect for SQL injection."
+    }
+   ],
+   "answer": [
+    0,
+    1
+   ]
+  },
+  {
+   "id": "edge-07",
+   "weak": "r53-policies",
+   "q": "By law, users in the EU must be served from eu-central-1. Everyone else goes to us-east-1. Which Route 53 setup meets this?",
+   "options": [
+    {
+     "t": "Latency-based routing",
+     "why": "Latency picks the fastest region. An EU user on some networks could get us-east-1, which breaks the law."
+    },
+    {
+     "t": "Geolocation routing: Europe → eu-central-1, default → us-east-1",
+     "why": "Right. Geolocation decides by where the user is. It's the policy for legal and content rules. Don't forget the default record."
+    },
+    {
+     "t": "Geoproximity routing with a bias toward eu-central-1",
+     "why": "Geoproximity uses distance plus a bias, not country borders, so it can't guarantee the legal boundary."
+    },
+    {
+     "t": "Weighted routing 50/50",
+     "why": "Random split, unrelated to location."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "edge-08",
+   "weak": "r53-policies",
+   "q": "An app runs in us-east-1, eu-west-1 and ap-northeast-1. The goal is the best response time for each user, decided at DNS level. Which policy?",
+   "options": [
+    {
+     "t": "Geolocation",
+     "why": "Location isn't speed. The geographically closest region isn't always the fastest network path."
+    },
+    {
+     "t": "Latency-based",
+     "why": "Right. Route 53 uses measured latency between user networks and AWS regions."
+    },
+    {
+     "t": "Geoproximity",
+     "why": "That's for shifting traffic with a bias, not for measuring speed."
+    },
+    {
+     "t": "Multivalue answer",
+     "why": "It returns several healthy IPs at random; it doesn't consider performance."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "edge-09",
+   "weak": "r53-policies",
+   "fix": "geoprox",
+   "q": "Which statement about Route 53 geoproximity routing is correct today?",
+   "options": [
+    {
+     "t": "It only works if you create a Traffic Flow policy first",
+     "why": "Outdated. Since 2024, geoproximity can be created as a normal record. Traffic Flow is optional."
+    },
+    {
+     "t": "It routes by the user's country, like geolocation",
+     "why": "It uses the distance between user and resource, not country borders."
+    },
+    {
+     "t": "It's the only policy with a bias to grow or shrink a region's share of traffic, and it can be a normal record",
+     "why": "Right. The bias dial is its unique feature, and Traffic Flow is no longer required."
+    },
+    {
+     "t": "It sends users to the region with the lowest measured latency",
+     "why": "That's latency-based routing."
+    }
+   ],
+   "answer": [
+    2
+   ]
+  },
+  {
+   "id": "edge-10",
+   "weak": "r53-policies",
+   "q": "A team wants to send 10% of users to a new version (green) and 90% to the current one (blue), then shift gradually. Users are web browsers that respect TTLs. Which is simplest?",
+   "options": [
+    {
+     "t": "Route 53 weighted records, 90/10, then shift the weights",
+     "why": "Right. Weighted is the DNS answer for canaries and blue/green. Weight 0 stops traffic to a record."
+    },
+    {
+     "t": "Route 53 failover records",
+     "why": "Failover is all-or-nothing on a health check, not a percentage split."
+    },
+    {
+     "t": "Geoproximity with a 10% bias",
+     "why": "Bias shifts by distance, not by an exact percentage."
+    },
+    {
+     "t": "Global Accelerator",
+     "why": "It works too, but it's more than needed since browsers respect DNS TTLs. The question asks for simplest."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "edge-11",
+   "weak": "failover",
+   "q": "A company's main site runs behind an ALB. If the ALB becomes unhealthy, users should see a static \"we'll be back soon\" page hosted on S3. Which Route 53 setup?",
+   "options": [
+    {
+     "t": "Weighted records for the ALB and S3, both with health checks",
+     "why": "That's active-active. S3 would get traffic even when the site is fine."
+    },
+    {
+     "t": "Failover routing: ALB as primary with a health check, S3 website as secondary",
+     "why": "Right. Active-passive with a static fallback is the textbook use of the Failover policy."
+    },
+    {
+     "t": "Latency routing between the ALB and S3",
+     "why": "Again active-active, and latency is the wrong criterion here."
+    },
+    {
+     "t": "Multivalue answer with both targets",
+     "why": "Returns both while healthy, so users could land on the sorry page at random."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "edge-12",
+   "weak": "failover",
+   "q": "An internal service lives in private subnets and is only resolvable through a private hosted zone. The team wants Route 53 to fail over when it becomes unhealthy. How do they health-check it?",
+   "options": [
+    {
+     "t": "Create an HTTP health check against the service's private IP",
+     "why": "Route 53 health checkers run on the internet. They can't reach a private IP."
+    },
+    {
+     "t": "Create a CloudWatch alarm on the service's metric, and a Route 53 health check that monitors the alarm",
+     "why": "Right. This is the standard pattern for private resources."
+    },
+    {
+     "t": "Open the security group to 0.0.0.0/0 so health checkers can reach it",
+     "why": "It's still a private IP with no public route, and this would also be a security hole."
+    },
+    {
+     "t": "Use a calculated health check with no child checks",
+     "why": "A calculated check needs child checks, and nothing here can reach the service."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "edge-13",
+   "weak": "failover",
+   "q": "An architect proposes \"Route 53 active-active failover routing\" so two regions both serve traffic and an unhealthy one is dropped. What's wrong with that?",
+   "options": [
+    {
+     "t": "Nothing. That's a standard policy",
+     "why": "There's no such policy. Failover routing is always active-passive."
+    },
+    {
+     "t": "Active-active is done with weighted, latency or multivalue records plus health checks, not the Failover policy",
+     "why": "Right. Any policy except Failover, with health checks, gives active-active."
+    },
+    {
+     "t": "Active-active needs Global Accelerator; Route 53 can't do it",
+     "why": "Route 53 can do active-active with health checks. GA is only needed for no-DNS failover or static IPs."
+    },
+    {
+     "t": "Active-active requires Aurora Global Database",
+     "why": "That's the database layer. It has nothing to do with the DNS policy."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "edge-14",
+   "weak": "alias",
+   "q": "example.com (the zone apex) must point at an Application Load Balancer. Which record?",
+   "options": [
+    {
+     "t": "CNAME example.com → the ALB's DNS name",
+     "why": "CNAMEs aren't allowed at the zone apex."
+    },
+    {
+     "t": "A record with the ALB's current IP addresses",
+     "why": "ALB IPs change. The record would break."
+    },
+    {
+     "t": "Alias A record → the ALB",
+     "why": "Right. Alias works at the apex, follows the ALB's changing IPs, and queries are free."
+    },
+    {
+     "t": "MX record → the ALB",
+     "why": "MX is for mail servers."
+    }
+   ],
+   "answer": [
+    2
+   ]
+  },
+  {
+   "id": "edge-15",
+   "weak": "alias",
+   "fix": "apex-ec2",
+   "q": "A small company wants example.com (apex) to point at its single EC2 web server, which has an Elastic IP. What's the simplest, cheapest correct setup?",
+   "options": [
+    {
+     "t": "It's impossible without an ALB, because Alias can't target EC2",
+     "why": "Wrong. Alias can't target EC2, but you don't need Alias here."
+    },
+    {
+     "t": "A record example.com → the Elastic IP",
+     "why": "Right. A plain A record to a static IP works at the apex. No ALB needed."
+    },
+    {
+     "t": "CNAME example.com → the instance's public DNS name",
+     "why": "No CNAMEs at the apex."
+    },
+    {
+     "t": "Alias record → the EC2 instance",
+     "why": "EC2 instances aren't valid Alias targets."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "edge-16",
+   "q": "Users must upload files through a CloudFront distribution into an S3 bucket. The bucket must stay private, and no one may reach it except through CloudFront. What should the architect configure?",
+   "options": [
+    {
+     "t": "Make the bucket public-write and restrict by Referer header",
+     "why": "Referer is trivial to fake, and the bucket would be public."
+    },
+    {
+     "t": "Origin Access Control (OAC), with the cache behavior allowing PUT/POST and a bucket policy for the distribution",
+     "why": "Right. OAC is the current way to lock S3 to CloudFront, and it supports writes and SSE-KMS."
+    },
+    {
+     "t": "S3 Transfer Acceleration",
+     "why": "Uploads would go to S3 directly, not through CloudFront, so the \"only via CloudFront\" rule breaks."
+    },
+    {
+     "t": "CloudFront geo restriction",
+     "why": "It controls which countries can access. It doesn't keep the bucket private."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "edge-17",
+   "q": "Paying subscribers need access to every video under /premium/, and nobody else should get it. Videos are served by CloudFront. What's the cleanest approach?",
+   "options": [
+    {
+     "t": "A CloudFront signed URL per video",
+     "why": "Works for one file, but it's clumsy for a whole area with hundreds of files."
+    },
+    {
+     "t": "CloudFront signed cookies",
+     "why": "Right. One cookie grants access to many files, such as everything under /premium/."
+    },
+    {
+     "t": "S3 pre-signed URLs",
+     "why": "These go to S3 directly and bypass CloudFront."
+    },
+    {
+     "t": "Geo restriction",
+     "why": "That filters by country, not by who has paid."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "edge-18",
+   "q": "On every request, a site must add security headers and normalise URLs at the edge, at millions of requests per second, at the lowest cost. What fits best?",
+   "options": [
+    {
+     "t": "Lambda@Edge on viewer request",
+     "why": "It works, but it costs more and scales lower. It's for heavier logic like auth calls or origin selection."
+    },
+    {
+     "t": "CloudFront Functions",
+     "why": "Right. Sub-millisecond JavaScript at every edge location, made for header and URL tweaks at huge scale."
+    },
+    {
+     "t": "ALB listener rules",
+     "why": "That runs in the region, not at the edge, and can't add response headers this way."
+    },
+    {
+     "t": "API Gateway mapping templates",
+     "why": "Wrong layer, and it isn't in front of a CloudFront site."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "edge-19",
+   "q": "The origin ALB is in eu-west-1. The team wants a custom HTTPS domain on the CloudFront distribution using an ACM certificate. Where must the certificate be?",
+   "options": [
+    {
+     "t": "eu-west-1, the same region as the origin",
+     "why": "A cert in eu-west-1 works on the ALB, not on CloudFront."
+    },
+    {
+     "t": "us-east-1",
+     "why": "Right. CloudFront only uses ACM certificates from us-east-1, whatever the origin's region."
+    },
+    {
+     "t": "Any region; CloudFront is global",
+     "why": "Global service, but the cert still has to live in us-east-1."
+    },
+    {
+     "t": "It must be imported into IAM",
+     "why": "The IAM certificate store is legacy. ACM in us-east-1 is the answer."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "edge-20",
+   "weak": "waf",
+   "q": "Which of these can AWS WAF NOT be attached to directly?",
+   "options": [
+    {
+     "t": "CloudFront distribution",
+     "why": "Supported, and it's the best place: it blocks at the edge."
+    },
+    {
+     "t": "Application Load Balancer",
+     "why": "Supported."
+    },
+    {
+     "t": "Network Load Balancer",
+     "why": "Right. WAF is layer 7, and the NLB is layer 4. Protect the layer behind it, or use Shield Advanced for DDoS."
+    },
+    {
+     "t": "API Gateway REST API",
+     "why": "Supported."
+    }
+   ],
+   "answer": [
+    2
+   ]
+  }
+ ],
+ "drills": [
+  {
+   "id": "cf-vs-ga",
+   "type": "thisorthat",
+   "title": "CloudFront or Global Accelerator?",
+   "intro": "One line at a time. 60 seconds. Tap the service it describes.",
+   "a": "CloudFront",
+   "b": "Global Accelerator",
+   "seconds": 60,
+   "items": [
+    {
+     "t": "Caches content at the edge",
+     "ans": "a"
+    },
+    {
+     "t": "Gives you 2 static anycast IP addresses",
+     "ans": "b"
+    },
+    {
+     "t": "Carries UDP traffic for a game",
+     "ans": "b"
+    },
+    {
+     "t": "Signed URLs and signed cookies",
+     "ans": "a"
+    },
+    {
+     "t": "Can have AWS WAF attached directly",
+     "ans": "a"
+    },
+    {
+     "t": "Regional failover in seconds without DNS changes",
+     "ans": "b"
+    },
+    {
+     "t": "Reduces load on an S3 origin",
+     "ans": "a"
+    },
+    {
+     "t": "Partners must allowlist fixed IPs",
+     "ans": "b"
+    },
+    {
+     "t": "Runs CloudFront Functions and Lambda@Edge",
+     "ans": "a"
+    },
+    {
+     "t": "Traffic dials to shift load between regions",
+     "ans": "b"
+    },
+    {
+     "t": "Speeds up dynamic HTTP with TTL 0",
+     "ans": "a",
+     "why": "Edge TLS + backbone. Dynamic HTTP doesn't rule CloudFront out."
+    },
+    {
+     "t": "Speeds up an HTTPS API with no caching at all",
+     "ans": "b",
+     "why": "Both could, but 'no caching, any TCP' is GA's description. If static IPs or fast failover appear, it's GA for sure."
+    },
+    {
+     "t": "Geo restriction by country",
+     "ans": "a"
+    },
+    {
+     "t": "Endpoint groups per region",
+     "ans": "b"
+    },
+    {
+     "t": "Price classes to cut cost",
+     "ans": "a"
+    },
+    {
+     "t": "MQTT / IoT devices worldwide",
+     "ans": "b"
+    }
+   ]
+  },
+  {
+   "id": "r53-match",
+   "type": "match",
+   "title": "Match the routing policy",
+   "intro": "Tap a policy, then tap what it does. On a computer you can also drag.",
+   "pairs": [
+    [
+     "Geolocation",
+     "Serve EU users from the EU because the law says so"
+    ],
+    [
+     "Latency",
+     "Send each user to the fastest region"
+    ],
+    [
+     "Geoproximity",
+     "Shift more traffic to one region with a bias dial"
+    ],
+    [
+     "Weighted",
+     "Send 10% of users to the new version"
+    ],
+    [
+     "Failover",
+     "Show a static S3 page when the main site is down"
+    ],
+    [
+     "Multivalue answer",
+     "Return up to 8 healthy IPs for the client to pick"
+    ],
+    [
+     "IP-based",
+     "Route by the client's network CIDR, e.g. one ISP"
+    ]
+   ]
+  },
+  {
+   "id": "alias-buckets",
+   "type": "buckets",
+   "title": "Which record can point at it?",
+   "intro": "Tap an item, then tap the box it belongs in. Check when all are placed.",
+   "buckets": [
+    "Alias",
+    "CNAME (not at apex)",
+    "A record"
+   ],
+   "items": [
+    {
+     "t": "Application Load Balancer",
+     "b": 0
+    },
+    {
+     "t": "CloudFront distribution",
+     "b": 0
+    },
+    {
+     "t": "S3 static website endpoint",
+     "b": 0
+    },
+    {
+     "t": "API Gateway custom domain",
+     "b": 0
+    },
+    {
+     "t": "Global Accelerator",
+     "b": 0
+    },
+    {
+     "t": "RDS endpoint",
+     "b": 1,
+     "why": "RDS isn't an Alias target. Use a CNAME on a subdomain."
+    },
+    {
+     "t": "Third-party hostname (e.g. a SaaS app)",
+     "b": 1
+    },
+    {
+     "t": "Single EC2 with an Elastic IP",
+     "b": 2,
+     "why": "EC2 isn't an Alias target. An A record to the Elastic IP works, even at the apex."
+    }
+   ]
+  },
+  {
+   "id": "waf-buckets",
+   "type": "buckets",
+   "title": "Can AWS WAF attach to it?",
+   "intro": "Tap an item, then tap Yes or No.",
+   "buckets": [
+    "Yes, attach WAF",
+    "No"
+   ],
+   "items": [
+    {
+     "t": "CloudFront",
+     "b": 0
+    },
+    {
+     "t": "Application Load Balancer",
+     "b": 0
+    },
+    {
+     "t": "API Gateway",
+     "b": 0
+    },
+    {
+     "t": "AppSync",
+     "b": 0
+    },
+    {
+     "t": "Cognito user pool",
+     "b": 0
+    },
+    {
+     "t": "Network Load Balancer",
+     "b": 1
+    },
+    {
+     "t": "EC2 instance",
+     "b": 1
+    },
+    {
+     "t": "Global Accelerator",
+     "b": 1
+    },
+    {
+     "t": "Route 53",
+     "b": 1
+    }
+   ]
+  },
+  {
+   "id": "edge-keywords",
+   "type": "keyword",
+   "title": "Spot the keyword",
+   "intro": "Tap the phrase that decides the answer. The exam hides it in the middle of the question.",
+   "items": [
+    {
+     "parts": [
+      "A media company serves video worldwide",
+      "from an ALB in us-east-1.",
+      "Partners need to allowlist exactly two IP addresses",
+      "and users want lower latency."
+     ],
+     "key": 2,
+     "answer": "Global Accelerator",
+     "why": "\"Two IP addresses\" means static anycast IPs, which only GA gives you."
+    },
+    {
+     "parts": [
+      "A retailer runs in two regions.",
+      "Customers in Germany",
+      "must be served from eu-central-1 by law,",
+      "and everyone else from us-east-1."
+     ],
+     "key": 2,
+     "answer": "Route 53 geolocation",
+     "why": "\"By law\" means location rules, not speed. That's geolocation, not latency."
+    },
+    {
+     "parts": [
+      "A news site has global readers.",
+      "Article images are requested millions of times a day",
+      "and the team wants to reduce load on the origin",
+      "with minimal changes."
+     ],
+     "key": 2,
+     "answer": "CloudFront",
+     "why": "\"Reduce load on the origin\" means caching, and only CloudFront caches."
+    },
+    {
+     "parts": [
+      "A company's main site runs behind an ALB.",
+      "If it becomes unhealthy,",
+      "users should see a static maintenance page on S3.",
+      "Cost must stay low."
+     ],
+     "key": 2,
+     "answer": "Route 53 failover routing",
+     "why": "A static fallback page is the textbook active-passive pattern."
+    },
+    {
+     "parts": [
+      "A team runs blue/green releases with Route 53 weighted records,",
+      "but mobile clients cache DNS for hours,",
+      "so the switch is slow.",
+      "They want near-instant cut-over."
+     ],
+     "key": 1,
+     "answer": "Global Accelerator",
+     "why": "\"Clients cache DNS\" kills any DNS-based switch. GA moves traffic behind the same IPs."
+    },
+    {
+     "parts": [
+      "A team needs to move more users to a new region gradually",
+      "based on where users are, using a bias,",
+      "without changing their app."
+     ],
+     "key": 1,
+     "answer": "Route 53 geoproximity",
+     "why": "\"Bias\" is the giveaway word. Only geoproximity has it."
+    }
+   ]
+  }
+ ]
+}

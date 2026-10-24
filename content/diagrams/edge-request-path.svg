@@ -1,0 +1,47 @@
+<svg viewBox="0 0 720 350" role="img" aria-label="Route 53 answers which IP; CloudFront caches HTTP; Global Accelerator carries any TCP or UDP over the AWS backbone" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="rp-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="dg-head"/></marker>
+  </defs>
+  <!-- Route 53 -->
+  <rect x="20" y="24" width="130" height="62" rx="8" class="dg-box"/>
+  <text x="85" y="50" text-anchor="middle" class="dg-t">Route 53</text>
+  <text x="85" y="70" text-anchor="middle" class="dg-s">DNS: which IP?</text>
+  <!-- User -->
+  <rect x="20" y="150" width="130" height="56" rx="8" class="dg-box"/>
+  <text x="85" y="183" text-anchor="middle" class="dg-t">User</text>
+  <path d="M70 150V90" class="dg-l" marker-end="url(#rp-arrow)"/>
+  <path d="M100 90V150" class="dg-l" marker-end="url(#rp-arrow)"/>
+  <text x="62" y="124" text-anchor="end" class="dg-s">① lookup</text>
+  <text x="108" y="124" class="dg-s">IP</text>
+  <!-- CloudFront -->
+  <rect x="230" y="34" width="180" height="62" rx="8" class="dg-acc"/>
+  <text x="320" y="60" text-anchor="middle" class="dg-t">CloudFront edge</text>
+  <text x="320" y="80" text-anchor="middle" class="dg-s">caches HTTP(S)</text>
+  <text x="320" y="116" text-anchor="middle" class="dg-s">cache hit → answers here</text>
+  <!-- Global Accelerator -->
+  <rect x="230" y="228" width="180" height="62" rx="8" class="dg-box"/>
+  <text x="320" y="254" text-anchor="middle" class="dg-t">Global Accelerator</text>
+  <text x="320" y="274" text-anchor="middle" class="dg-s">2 static anycast IPs</text>
+  <text x="320" y="310" text-anchor="middle" class="dg-s">no cache, any TCP/UDP</text>
+  <!-- user to edges -->
+  <path d="M150 168H190V65H230" class="dg-l" marker-end="url(#rp-arrow)"/>
+  <path d="M150 190H190V259H230" class="dg-l" marker-end="url(#rp-arrow)"/>
+  <text x="196" y="140" class="dg-s">② HTTP</text>
+  <text x="196" y="222" class="dg-s">② TCP/UDP</text>
+  <!-- origin -->
+  <rect x="490" y="34" width="210" height="62" rx="8" class="dg-box"/>
+  <text x="595" y="60" text-anchor="middle" class="dg-t">Origin</text>
+  <text x="595" y="80" text-anchor="middle" class="dg-s">ALB · S3 · EC2 · custom</text>
+  <path d="M410 65H490" class="dg-l" marker-end="url(#rp-arrow)"/>
+  <text x="450" y="56" text-anchor="middle" class="dg-s">miss</text>
+  <text x="450" y="84" text-anchor="middle" class="dg-s">backbone</text>
+  <!-- regions -->
+  <rect x="490" y="196" width="210" height="52" rx="8" class="dg-box"/>
+  <text x="595" y="219" text-anchor="middle" class="dg-t">Region A</text>
+  <text x="595" y="237" text-anchor="middle" class="dg-s">ALB · NLB · EC2 · EIP</text>
+  <rect x="490" y="272" width="210" height="52" rx="8" class="dg-box dg-dash"/>
+  <text x="595" y="295" text-anchor="middle" class="dg-t">Region B</text>
+  <text x="595" y="313" text-anchor="middle" class="dg-s">takes over in seconds</text>
+  <path d="M410 250H450V222H490" class="dg-l" marker-end="url(#rp-arrow)"/>
+  <path d="M410 268H450V298H490" class="dg-l dg-dashl" marker-end="url(#rp-arrow)"/>
+</svg>
