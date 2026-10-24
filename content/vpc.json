@@ -1,0 +1,1147 @@
+{
+ "id": "vpc",
+ "title": "VPC core",
+ "oneLiner": "A subnet is public only because of its <b>route to an internet gateway</b>. Security groups <b>allow</b> and remember replies; NACLs can <b>deny</b> and forget them. <b>Gateway endpoints</b> are free but only for S3 and DynamoDB, and only from inside the VPC.",
+ "notes": [
+  {
+   "type": "h2",
+   "text": "Public vs private subnets"
+  },
+  {
+   "type": "p",
+   "html": "A VPC lives in <b>one region</b>, and each subnet lives in <b>one AZ</b>. What makes a subnet public is <b>one route</b>: <code>0.0.0.0/0 → internet gateway</code>. Private subnets send that route to a NAT gateway, or have no internet route at all."
+  },
+  {
+   "type": "diagram",
+   "src": "content/diagrams/vpc-layout.svg",
+   "caption": "One VPC: public subnet in front, private subnet behind, endpoints to reach AWS services privately"
+  },
+  {
+   "type": "table",
+   "head": [
+    "Piece",
+    "What it does",
+    "Exam detail"
+   ],
+   "rows": [
+    [
+     "<b>Internet gateway</b>",
+     "Two-way internet for public subnets",
+     "One per VPC. Instances also need a public or Elastic IP"
+    ],
+    [
+     "<b>NAT gateway</b>",
+     "Outbound-only internet for private subnets (IPv4)",
+     "Sits in a <b>public</b> subnet. Lives in one AZ, so use <b>one per AZ</b> for HA. No security group"
+    ],
+    [
+     "<b>NAT instance</b>",
+     "Old do-it-yourself NAT on EC2",
+     "Disable source/dest check. Pick it only if the question says self-managed or cheapest"
+    ],
+    [
+     "<b>Egress-only IGW</b>",
+     "Outbound-only for <b>IPv6</b>",
+     "IPv6 has no NAT. This is its \"NAT\""
+    ],
+    [
+     "<b>Bastion host</b>",
+     "SSH jump box in a public subnet",
+     "Better answer: <b>SSM Session Manager</b> (no open ports, no keys)"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"private instances need to download patches\"",
+     "NAT gateway in a public subnet + route from private"
+    ],
+    [
+     "\"NAT must survive an AZ failure\"",
+     "One NAT gateway per AZ"
+    ],
+    [
+     "\"IPv6 outbound only\"",
+     "Egress-only internet gateway"
+    ],
+    [
+     "\"no SSH keys / no open port 22\"",
+     "SSM Session Manager"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Security groups vs NACLs",
+   "weak": "sg-chain"
+  },
+  {
+   "type": "p",
+   "html": "Traffic into an instance passes <b>two firewalls</b>: the NACL at the subnet edge, then the security group on the ENI."
+  },
+  {
+   "type": "table",
+   "head": [
+    "",
+    "Security group",
+    "NACL"
+   ],
+   "rows": [
+    [
+     "Attached to",
+     "ENI / instance",
+     "Subnet"
+    ],
+    [
+     "Rules",
+     "<b>Allow only</b>",
+     "Allow <b>and deny</b>"
+    ],
+    [
+     "State",
+     "<b>Stateful</b>: replies are allowed automatically",
+     "<b>Stateless</b>: allow the reply too (ephemeral ports 1024-65535)"
+    ],
+    [
+     "Order",
+     "All rules checked",
+     "Lowest rule number wins, first match"
+    ],
+    [
+     "Default",
+     "New SG: no inbound, all outbound",
+     "<b>Default NACL: allow all. A custom NACL denies all</b> until you add rules"
+    ],
+    [
+     "Use it to",
+     "Allow app tiers to talk",
+     "<b>Block a specific IP or range</b>"
+    ]
+   ]
+  },
+  {
+   "type": "p",
+   "html": "<b>Security group chaining:</b> each tier allows traffic <b>from the security group of the tier in front</b>, not from IP ranges. New instances join the tier and are allowed automatically."
+  },
+  {
+   "type": "table",
+   "head": [
+    "Tier",
+    "Inbound rule"
+   ],
+   "rows": [
+    [
+     "ALB SG",
+     "443 from 0.0.0.0/0"
+    ],
+    [
+     "App SG",
+     "8080 from <b>ALB SG</b>"
+    ],
+    [
+     "DB SG",
+     "3306 from <b>App SG</b>"
+    ]
+   ]
+  },
+  {
+   "type": "traps",
+   "items": [
+    "<b>\"Block this one bad IP\"</b> is always a NACL. Security groups can't deny.",
+    "Created a custom NACL and everything broke? It <b>denies all by default</b>. Only the default NACL allows all.",
+    "NACL allowed port 443 inbound but responses fail: you forgot <b>outbound ephemeral ports</b>."
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"deny\" / \"block IP address\"",
+     "NACL"
+    ],
+    [
+     "\"only the web tier may reach the DB\"",
+     "DB SG allows the web tier's SG"
+    ],
+    [
+     "\"return traffic automatically allowed\"",
+     "Security group (stateful)"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "VPC endpoints: Gateway vs Interface",
+   "weak": "endpoints"
+  },
+  {
+   "type": "p",
+   "html": "Endpoints let private subnets reach AWS services <b>without the internet or a NAT gateway</b>. The whole topic is one rule: <b>Gateway endpoints exist only for S3 and DynamoDB, and they only work from inside the VPC.</b>"
+  },
+  {
+   "type": "table",
+   "head": [
+    "",
+    "Gateway endpoint",
+    "Interface endpoint (PrivateLink)"
+   ],
+   "rows": [
+    [
+     "Services",
+     "<b>S3 and DynamoDB only</b>",
+     "Almost everything (SQS, KMS, SSM, ECR…), also S3 and DynamoDB"
+    ],
+    [
+     "How",
+     "Entry in the <b>route table</b>",
+     "<b>ENI with a private IP</b> in your subnet"
+    ],
+    [
+     "Cost",
+     "<b>Free</b>",
+     "Per hour + per GB"
+    ],
+    [
+     "From on-prem (VPN/DX)",
+     "<b>No</b>",
+     "<b>Yes</b>"
+    ],
+    [
+     "From a peered VPC / other region",
+     "No",
+     "Yes"
+    ],
+    [
+     "Lock it down with",
+     "Endpoint policy",
+     "Endpoint policy + security group"
+    ]
+   ]
+  },
+  {
+   "type": "traps",
+   "items": [
+    "<b>\"S3 from on-premises over Direct Connect, privately\"</b> → <b>Interface</b> endpoint for S3. Gateway endpoints can't be reached from outside the VPC.",
+    "\"Private subnet reaches S3, cheapest\" → Gateway endpoint (free), not NAT (you pay per GB).",
+    "Endpoint policies add to IAM and bucket policies. They never grant more than those do."
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"S3/DynamoDB privately from the VPC\" + \"cost\"",
+     "Gateway endpoint"
+    ],
+    [
+     "\"SQS / KMS / SSM without internet\"",
+     "Interface endpoint"
+    ],
+    [
+     "\"from on-prem\" + \"S3 privately\"",
+     "Interface endpoint for S3"
+    ],
+    [
+     "\"bucket only reachable through my VPC\"",
+     "Bucket policy with aws:SourceVpce"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Connecting VPCs: Peering vs Transit Gateway vs PrivateLink"
+  },
+  {
+   "type": "diagram",
+   "src": "content/diagrams/vpc-connect.svg",
+   "caption": "Two networks, many networks, or one service"
+  },
+  {
+   "type": "table",
+   "head": [
+    "",
+    "Peering",
+    "Transit Gateway",
+    "PrivateLink"
+   ],
+   "rows": [
+    [
+     "Shape",
+     "1 to 1",
+     "Hub and spoke",
+     "Consumer → one service"
+    ],
+    [
+     "Transitive?",
+     "<b>No</b>",
+     "<b>Yes</b>",
+     "n/a"
+    ],
+    [
+     "Overlapping CIDRs",
+     "Not allowed",
+     "Not allowed",
+     "<b>Fine</b>"
+    ],
+    [
+     "Cost",
+     "No hourly fee, pay data",
+     "Hourly per attachment + data",
+     "Hourly per endpoint + data"
+    ],
+    [
+     "Pick when",
+     "A few VPCs, full trust",
+     "Many VPCs + on-prem",
+     "\"Expose my service to 100s of customer VPCs\""
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"two VPCs\" + \"cheapest\"",
+     "VPC peering"
+    ],
+    [
+     "\"hundreds of VPCs\" / \"transitive\" / \"central hub\"",
+     "Transit Gateway"
+    ],
+    [
+     "\"overlapping CIDRs\" + \"one app\"",
+     "PrivateLink (NLB + interface endpoint)"
+    ],
+    [
+     "\"share subnets with other accounts\"",
+     "RAM (VPC sharing)"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "IP ranges and sizing"
+  },
+  {
+   "type": "table",
+   "head": [
+    "Fact",
+    "Value"
+   ],
+   "rows": [
+    [
+     "VPC CIDR size",
+     "/16 (65,536) down to /28 (16)"
+    ],
+    [
+     "IPs AWS reserves per subnet",
+     "<b>5</b>: first 4 + last 1"
+    ],
+    [
+     "Usable in a /24",
+     "251"
+    ],
+    [
+     "Usable in a /28",
+     "11"
+    ],
+    [
+     "Ran out of IPs?",
+     "Add a <b>secondary CIDR</b> to the VPC"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"how many usable IPs in /24\"",
+     "251"
+    ],
+    [
+     "\"VPC out of addresses\"",
+     "Add a secondary CIDR block"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Seeing and filtering traffic"
+  },
+  {
+   "type": "table",
+   "head": [
+    "Need",
+    "Service",
+    "Note"
+   ],
+   "rows": [
+    [
+     "Which IPs and ports talked, accepted or rejected",
+     "<b>VPC Flow Logs</b>",
+     "Metadata only, no packet contents. VPC, subnet or ENI level"
+    ],
+    [
+     "Copy actual packets to an inspection tool",
+     "<b>Traffic Mirroring</b>",
+     "Full packet content"
+    ],
+    [
+     "Managed firewall for the whole VPC (L3-L7, domain filtering)",
+     "<b>AWS Network Firewall</b>",
+     "Inspects traffic between subnets and to the internet"
+    ],
+    [
+     "Third-party firewall appliances inline",
+     "<b>Gateway Load Balancer</b>",
+     "GENEVE, port 6081"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"troubleshoot rejected connections\"",
+     "VPC Flow Logs"
+    ],
+    [
+     "\"inspect packet payloads\"",
+     "Traffic Mirroring"
+    ],
+    [
+     "\"filter outbound by domain name\"",
+     "Network Firewall"
+    ],
+    [
+     "\"third-party virtual appliances\"",
+     "Gateway Load Balancer"
+    ]
+   ]
+  }
+ ],
+ "questions": [
+  {
+   "id": "vpc-01",
+   "weak": "endpoints",
+   "q": "EC2 instances in a private subnet must read objects from an S3 bucket in the same region. Traffic must not go over the internet, and the team wants the lowest cost. What should they use?",
+   "options": [
+    {
+     "t": "A NAT gateway in a public subnet",
+     "why": "Works, but traffic leaves through the internet gateway and you pay per GB of NAT processing."
+    },
+    {
+     "t": "A gateway VPC endpoint for S3",
+     "why": "Right. Free, a route-table entry, and traffic stays on the AWS network."
+    },
+    {
+     "t": "An interface VPC endpoint for S3",
+     "why": "Works and is private, but you pay per hour and per GB. Gateway is the cheaper fit inside the VPC."
+    },
+    {
+     "t": "VPC peering with the S3 service VPC",
+     "why": "There is no S3 VPC to peer with."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "vpc-02",
+   "weak": "endpoints",
+   "q": "An on-premises data center connects to a VPC over Direct Connect with a private VIF. Servers on-premises must upload to S3 over this private connection, without using public IPs. What should the architect add?",
+   "options": [
+    {
+     "t": "A gateway endpoint for S3 in the VPC",
+     "why": "Gateway endpoints are route-table entries inside the VPC. Traffic arriving from on-premises can't use them."
+    },
+    {
+     "t": "An interface endpoint for S3 in the VPC",
+     "why": "Right. It has private IPs in your subnet, so on-premises can reach it over DX or VPN."
+    },
+    {
+     "t": "A NAT gateway in the VPC",
+     "why": "NAT gives private subnets internet access. It doesn't help on-prem reach S3 privately."
+    },
+    {
+     "t": "S3 Transfer Acceleration",
+     "why": "That speeds up uploads over the public internet. It isn't private."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "vpc-03",
+   "weak": "endpoints",
+   "q": "Which TWO services can use a gateway VPC endpoint?",
+   "multi": true,
+   "options": [
+    {
+     "t": "Amazon S3",
+     "why": "Right. One of only two."
+    },
+    {
+     "t": "Amazon SQS",
+     "why": "SQS uses interface endpoints."
+    },
+    {
+     "t": "Amazon DynamoDB",
+     "why": "Right. The other one."
+    },
+    {
+     "t": "AWS KMS",
+     "why": "KMS uses interface endpoints."
+    },
+    {
+     "t": "AWS Systems Manager",
+     "why": "SSM uses interface endpoints."
+    }
+   ],
+   "answer": [
+    0,
+    2
+   ]
+  },
+  {
+   "id": "vpc-04",
+   "weak": "endpoints",
+   "q": "Lambda functions in private subnets call SQS and KMS. Security now forbids any route to the internet, so the NAT gateway is being removed. What keeps the functions working?",
+   "options": [
+    {
+     "t": "Gateway endpoints for SQS and KMS",
+     "why": "Gateway endpoints exist only for S3 and DynamoDB."
+    },
+    {
+     "t": "Interface endpoints for SQS and KMS",
+     "why": "Right. Private IPs in the subnet, no internet route needed."
+    },
+    {
+     "t": "Move the functions out of the VPC",
+     "why": "That would work technically, but it ignores why they're in the VPC (they likely reach private resources)."
+    },
+    {
+     "t": "An egress-only internet gateway",
+     "why": "That's still internet access, and it's IPv6 only."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "vpc-05",
+   "weak": "sg-chain",
+   "q": "A three-tier app has an ALB, EC2 app servers in an Auto Scaling group, and RDS MySQL. The DB must accept connections only from the app servers, even as instances scale in and out. How should the DB's security group be set?",
+   "options": [
+    {
+     "t": "Allow 3306 from the private subnet CIDR",
+     "why": "Too broad: anything in that subnet, not just app servers, gets in."
+    },
+    {
+     "t": "Allow 3306 from the app tier's security group",
+     "why": "Right. Security group chaining: any instance in the app SG is allowed, whatever its IP."
+    },
+    {
+     "t": "Allow 3306 from each app server's private IP",
+     "why": "Breaks as soon as the ASG replaces an instance."
+    },
+    {
+     "t": "Add a NACL rule allowing 3306 from the ALB",
+     "why": "The ALB doesn't connect to the DB, and NACLs work on IP ranges, not tiers."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "vpc-06",
+   "weak": "sg-chain",
+   "q": "Web servers behind an ALB currently allow port 80 from 0.0.0.0/0. The team wants them reachable only through the ALB. What is the most secure change?",
+   "options": [
+    {
+     "t": "Allow port 80 only from the ALB's security group",
+     "why": "Right. Only traffic coming from the ALB's ENIs is accepted."
+    },
+    {
+     "t": "Allow port 80 from the ALB's public IP addresses",
+     "why": "ALB IPs change over time, and traffic from the ALB uses its private IPs."
+    },
+    {
+     "t": "Add a NACL that denies 0.0.0.0/0",
+     "why": "That would also block the ALB, and the replies."
+    },
+    {
+     "t": "Move the web servers to a public subnet",
+     "why": "That makes them more exposed, not less."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "vpc-07",
+   "q": "Logs show attacks from one IP address against a public web app in a subnet. The team must block that IP right away. What should they use?",
+   "options": [
+    {
+     "t": "A deny rule in the security group",
+     "why": "Security groups have no deny rules."
+    },
+    {
+     "t": "A deny rule in the subnet's network ACL",
+     "why": "Right. NACLs can deny a specific IP or range."
+    },
+    {
+     "t": "Remove the route to the internet gateway",
+     "why": "That takes the whole site offline."
+    },
+    {
+     "t": "VPC Flow Logs",
+     "why": "Flow Logs record traffic. They don't block anything."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "vpc-08",
+   "fix": "nacl-default",
+   "q": "An engineer creates a new custom network ACL and associates it with a subnet. Immediately, all traffic to the subnet stops. Why?",
+   "options": [
+    {
+     "t": "Custom NACLs deny all inbound and outbound traffic until you add rules",
+     "why": "Right. Only the default NACL allows everything."
+    },
+    {
+     "t": "NACLs are stateful and need an outbound rule",
+     "why": "NACLs are stateless, and that's not why everything stopped."
+    },
+    {
+     "t": "Security groups were reset",
+     "why": "Associating a NACL doesn't touch security groups."
+    },
+    {
+     "t": "The subnet lost its route table",
+     "why": "Associating a NACL doesn't change routes."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "vpc-09",
+   "q": "A NACL allows inbound TCP 443 from 0.0.0.0/0 and has an outbound rule allowing only TCP 443. Clients can't load the site. What is missing?",
+   "options": [
+    {
+     "t": "An inbound rule for ephemeral ports",
+     "why": "Inbound is fine. The responses are what's failing."
+    },
+    {
+     "t": "An outbound rule for ephemeral ports 1024-65535",
+     "why": "Right. NACLs are stateless, so responses to clients' high ports need their own allow rule."
+    },
+    {
+     "t": "A security group outbound rule",
+     "why": "Security groups are stateful. Replies are allowed automatically."
+    },
+    {
+     "t": "A route to the NAT gateway",
+     "why": "This is a public site reached through the internet gateway."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "vpc-10",
+   "q": "Instances in private subnets across three AZs use one NAT gateway in AZ-a. When AZ-a has an outage, all instances lose internet access. What fixes this with the least management?",
+   "options": [
+    {
+     "t": "Replace it with a NAT instance in an Auto Scaling group",
+     "why": "More work to run, and it's the old approach."
+    },
+    {
+     "t": "Create a NAT gateway in each AZ and point each private subnet's route to the NAT in its own AZ",
+     "why": "Right. A NAT gateway is redundant within its AZ only."
+    },
+    {
+     "t": "Put the NAT gateway in a private subnet",
+     "why": "A NAT gateway must sit in a public subnet."
+    },
+    {
+     "t": "Add a second internet gateway",
+     "why": "A VPC has only one internet gateway, and that's not the single point of failure here."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "vpc-11",
+   "q": "A company needs IPv6-enabled instances in a private subnet to reach the internet for updates, while blocking inbound IPv6 connections from the internet. What should they use?",
+   "options": [
+    {
+     "t": "NAT gateway",
+     "why": "NAT gateways are for IPv4."
+    },
+    {
+     "t": "Egress-only internet gateway",
+     "why": "Right. Outbound-only for IPv6."
+    },
+    {
+     "t": "Internet gateway with a security group",
+     "why": "That would let the instances be reachable if they had inbound rules. Egress-only is the purpose-built answer."
+    },
+    {
+     "t": "Gateway VPC endpoint",
+     "why": "Endpoints are for AWS services, not the internet."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "vpc-12",
+   "q": "Administrators need shell access to EC2 instances in private subnets. Security wants no inbound ports open, no bastion hosts and no SSH keys, with sessions logged. What should they use?",
+   "options": [
+    {
+     "t": "A bastion host in a public subnet",
+     "why": "Needs port 22 open and keys to manage."
+    },
+    {
+     "t": "AWS Systems Manager Session Manager",
+     "why": "Right. Agent-based, no inbound ports, sessions logged to S3 or CloudWatch."
+    },
+    {
+     "t": "EC2 Instance Connect over the internet",
+     "why": "Still needs port 22 reachable."
+    },
+    {
+     "t": "A site-to-site VPN",
+     "why": "Adds a network path but still needs SSH and keys."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "vpc-13",
+   "q": "VPC A is peered with VPC B, and VPC B is peered with VPC C. Instances in A can't reach C. What is the reason?",
+   "options": [
+    {
+     "t": "Peering is not transitive",
+     "why": "Right. A needs its own peering with C, or use a Transit Gateway."
+    },
+    {
+     "t": "The security groups block it",
+     "why": "Possible in general, but the core rule here is that peering doesn't pass traffic through B."
+    },
+    {
+     "t": "Peering only works within one account",
+     "why": "Peering works across accounts and regions."
+    },
+    {
+     "t": "The CIDRs overlap",
+     "why": "Nothing says they overlap. If they did, the peering couldn't be created."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "vpc-14",
+   "q": "A company has 60 VPCs across several accounts and a VPN to its data center. They want any VPC to reach any other VPC and on-premises, with central routing control. What is the most scalable design?",
+   "options": [
+    {
+     "t": "Full mesh of VPC peering connections",
+     "why": "Around 1,770 peering connections, each with routes. Doesn't scale."
+    },
+    {
+     "t": "A Transit Gateway with all VPCs and the VPN attached",
+     "why": "Right. Hub and spoke, transitive, route tables control who talks to whom."
+    },
+    {
+     "t": "PrivateLink between all VPCs",
+     "why": "PrivateLink exposes single services, not whole networks."
+    },
+    {
+     "t": "One VGW per VPC with its own VPN",
+     "why": "60 VPNs to manage, and VPC-to-VPC still isn't solved."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "vpc-15",
+   "q": "A SaaS provider wants to expose an API to hundreds of customer VPCs. Many customers use the same CIDR range as the provider. Traffic must stay off the internet. What should the provider use?",
+   "options": [
+    {
+     "t": "VPC peering with each customer",
+     "why": "Overlapping CIDRs block peering, and hundreds of peerings don't scale."
+    },
+    {
+     "t": "Transit Gateway shared to all customers",
+     "why": "Overlapping CIDRs are a problem there too, and it opens whole networks."
+    },
+    {
+     "t": "PrivateLink: an endpoint service behind an NLB, with interface endpoints in customer VPCs",
+     "why": "Right. One service, one direction, overlapping CIDRs don't matter."
+    },
+    {
+     "t": "A public API Gateway",
+     "why": "That goes over the internet."
+    }
+   ],
+   "answer": [
+    2
+   ]
+  },
+  {
+   "id": "vpc-16",
+   "q": "A subnet uses 10.0.1.0/24. How many IP addresses can be assigned to instances?",
+   "options": [
+    {
+     "t": "256",
+     "why": "That's the total. AWS reserves 5."
+    },
+    {
+     "t": "254",
+     "why": "That's the usual on-prem answer. AWS reserves 5, not 2."
+    },
+    {
+     "t": "251",
+     "why": "Right. 256 minus 5 reserved."
+    },
+    {
+     "t": "250",
+     "why": "AWS reserves 5, not 6."
+    }
+   ],
+   "answer": [
+    2
+   ]
+  },
+  {
+   "id": "vpc-17",
+   "q": "A security team must find out why connections from one IP to a database are being rejected. They need records of accepted and rejected traffic, not packet contents. What should they enable?",
+   "options": [
+    {
+     "t": "VPC Flow Logs",
+     "why": "Right. Source, destination, port and ACCEPT/REJECT for each flow."
+    },
+    {
+     "t": "Traffic Mirroring",
+     "why": "Copies packet contents. More than needed and more expensive."
+    },
+    {
+     "t": "CloudTrail",
+     "why": "Records API calls, not network traffic."
+    },
+    {
+     "t": "AWS Config",
+     "why": "Records resource configuration changes, not traffic."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "vpc-18",
+   "q": "A company must inspect all outbound traffic from its VPCs and allow only approved domain names, using a managed AWS service. What should they deploy?",
+   "options": [
+    {
+     "t": "Security groups with domain rules",
+     "why": "Security groups work with IPs, ports and SG references, not domain names."
+    },
+    {
+     "t": "AWS Network Firewall",
+     "why": "Right. Managed stateful firewall with domain allow-lists."
+    },
+    {
+     "t": "AWS WAF on the NAT gateway",
+     "why": "WAF attaches to HTTP services like ALB and CloudFront, not NAT gateways."
+    },
+    {
+     "t": "Network ACLs",
+     "why": "NACLs filter IP ranges and ports, not domains."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "vpc-19",
+   "weak": "endpoints",
+   "q": "A bucket policy must make sure objects can only be read through a specific VPC endpoint. Which condition key should it use?",
+   "options": [
+    {
+     "t": "aws:SourceIp",
+     "why": "Traffic through a VPC endpoint uses private IPs, so source IP conditions don't fit."
+    },
+    {
+     "t": "aws:SourceVpce",
+     "why": "Right. Deny unless the request came through that endpoint ID."
+    },
+    {
+     "t": "aws:PrincipalOrgID",
+     "why": "Limits by AWS Organization, not network path."
+    },
+    {
+     "t": "s3:x-amz-server-side-encryption",
+     "why": "That's about encryption headers."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "vpc-20",
+   "q": "A VPC with a /24 CIDR is running out of IP addresses for new subnets. What is the least disruptive fix?",
+   "options": [
+    {
+     "t": "Create a new, larger VPC and migrate",
+     "why": "Works but is very disruptive."
+    },
+    {
+     "t": "Add a secondary CIDR block to the VPC",
+     "why": "Right. Then create new subnets in the new range."
+    },
+    {
+     "t": "Resize the existing subnets",
+     "why": "Subnet CIDRs can't be changed after creation."
+    },
+    {
+     "t": "Use a NAT gateway to share addresses",
+     "why": "NAT doesn't create addresses for instances."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  }
+ ],
+ "drills": [
+  {
+   "id": "sg-or-nacl",
+   "type": "thisorthat",
+   "title": "Security group or NACL?",
+   "intro": "One line at a time. 60 seconds. Tap the firewall it describes.",
+   "a": "Security group",
+   "b": "NACL",
+   "seconds": 60,
+   "items": [
+    {
+     "t": "Can deny a specific IP address",
+     "ans": "b"
+    },
+    {
+     "t": "Stateful: replies are allowed automatically",
+     "ans": "a"
+    },
+    {
+     "t": "Attached to a subnet",
+     "ans": "b"
+    },
+    {
+     "t": "Attached to an ENI",
+     "ans": "a"
+    },
+    {
+     "t": "Rules evaluated in number order, first match wins",
+     "ans": "b"
+    },
+    {
+     "t": "Can reference another one of its kind as a source",
+     "ans": "a"
+    },
+    {
+     "t": "You must allow ephemeral ports for responses",
+     "ans": "b"
+    },
+    {
+     "t": "Allow rules only",
+     "ans": "a"
+    },
+    {
+     "t": "The custom one blocks everything until you add rules",
+     "ans": "b"
+    },
+    {
+     "t": "\"Only the app tier may reach the database\"",
+     "ans": "a"
+    },
+    {
+     "t": "\"Block this IP range at the subnet edge\"",
+     "ans": "b"
+    },
+    {
+     "t": "New one has no inbound rules but allows all outbound",
+     "ans": "a"
+    }
+   ]
+  },
+  {
+   "id": "endpoint-buckets",
+   "type": "buckets",
+   "title": "Which endpoint fits?",
+   "intro": "Tap an item, then tap the box. Check when all are placed.",
+   "buckets": [
+    "Gateway endpoint",
+    "Interface endpoint"
+   ],
+   "items": [
+    {
+     "t": "Private subnet → S3, cheapest",
+     "b": 0
+    },
+    {
+     "t": "Private subnet → DynamoDB, free",
+     "b": 0
+    },
+    {
+     "t": "Lambda → SQS with no internet",
+     "b": 1
+    },
+    {
+     "t": "On-prem over DX → S3 privately",
+     "b": 1,
+     "why": "Gateway endpoints can't be reached from outside the VPC."
+    },
+    {
+     "t": "EC2 → KMS privately",
+     "b": 1
+    },
+    {
+     "t": "Peered VPC → S3 through your endpoint",
+     "b": 1,
+     "why": "Gateway endpoints only serve their own VPC."
+    },
+    {
+     "t": "Implemented as a route-table entry",
+     "b": 0
+    },
+    {
+     "t": "Has a security group",
+     "b": 1
+    }
+   ]
+  },
+  {
+   "id": "connect-match",
+   "type": "match",
+   "title": "Match the connection",
+   "intro": "Tap a service, then tap the scenario it fits.",
+   "pairs": [
+    [
+     "VPC peering",
+     "Two VPCs, full access, cheapest"
+    ],
+    [
+     "Transit Gateway",
+     "200 VPCs plus on-prem through one hub"
+    ],
+    [
+     "PrivateLink",
+     "Share one API with customers who use the same CIDR"
+    ],
+    [
+     "Gateway endpoint",
+     "Private subnet reads S3 for free"
+    ],
+    [
+     "NAT gateway",
+     "Private instances download OS patches"
+    ],
+    [
+     "Egress-only IGW",
+     "IPv6 instances go out but can't be reached"
+    ],
+    [
+     "Session Manager",
+     "Shell access with no port 22"
+    ]
+   ]
+  },
+  {
+   "id": "vpc-keywords",
+   "type": "keyword",
+   "title": "Spot the keyword",
+   "intro": "Tap the phrase that decides the answer.",
+   "items": [
+    {
+     "parts": [
+      "An app in private subnets",
+      "uploads reports to S3.",
+      "The finance team asks",
+      "for the lowest-cost private path."
+     ],
+     "key": 3,
+     "answer": "Gateway endpoint for S3",
+     "why": "\"Lowest cost\" + S3 from inside the VPC = free gateway endpoint."
+    },
+    {
+     "parts": [
+      "A factory's servers",
+      "connect over Direct Connect",
+      "and must reach S3",
+      "without public IPs."
+     ],
+     "key": 1,
+     "answer": "Interface endpoint for S3",
+     "why": "Coming from on-prem rules out the gateway endpoint."
+    },
+    {
+     "parts": [
+      "A public web tier",
+      "is under attack",
+      "from a single IP address",
+      "and must stay online."
+     ],
+     "key": 2,
+     "answer": "NACL deny rule",
+     "why": "Blocking one IP needs a deny rule, which only NACLs have."
+    },
+    {
+     "parts": [
+      "A provider exposes one service",
+      "to 400 customer VPCs,",
+      "many with overlapping CIDRs,",
+      "over private connectivity."
+     ],
+     "key": 2,
+     "answer": "PrivateLink",
+     "why": "Overlapping CIDRs rule out peering and Transit Gateway."
+    },
+    {
+     "parts": [
+      "NAT for private subnets",
+      "in three AZs",
+      "must keep working",
+      "if one AZ fails."
+     ],
+     "key": 3,
+     "answer": "One NAT gateway per AZ",
+     "why": "A NAT gateway is only redundant inside its own AZ."
+    }
+   ]
+  }
+ ]
+}
