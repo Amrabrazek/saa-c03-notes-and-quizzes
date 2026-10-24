@@ -1,0 +1,1164 @@
+{
+ "id": "security",
+ "title": "Security & identity",
+ "oneLiner": "Default is <b>deny</b>; something must allow and nothing may deny. <b>Audit</b> rules out SSE-S3. <b>Custom rotation or cross-account</b> needs a customer managed key. <b>Same key in two regions</b> means a new multi-region key.",
+ "notes": [
+  {
+   "type": "h2",
+   "text": "How AWS decides: policies and evaluation"
+  },
+  {
+   "type": "p",
+   "html": "Default is <b>deny</b>. Something must <b>allow</b>, nothing may <b>explicitly deny</b>, and guardrails (SCPs, boundaries) must not cap it."
+  },
+  {
+   "type": "diagram",
+   "src": "content/diagrams/iam-eval.svg",
+   "caption": "Simplified evaluation inside one account"
+  },
+  {
+   "type": "table",
+   "head": [
+    "Policy type",
+    "Attached to",
+    "Grants?",
+    "Use it for"
+   ],
+   "rows": [
+    [
+     "<b>Identity policy</b>",
+     "User, group, role",
+     "Yes",
+     "What this identity may do"
+    ],
+    [
+     "<b>Resource policy</b>",
+     "S3 bucket, SQS, SNS, KMS key, Lambda…",
+     "Yes; has a <code>Principal</code>",
+     "Who may use this resource, incl. other accounts"
+    ],
+    [
+     "<b>Trust policy</b>",
+     "A role",
+     "Who may <b>assume</b> it",
+     "EC2, Lambda, another account, a federated user"
+    ],
+    [
+     "<b>Permission boundary</b>",
+     "User or role (not groups)",
+     "<b>No</b>, caps only",
+     "Let developers create roles without escalating"
+    ],
+    [
+     "<b>SCP</b>",
+     "Org root, OU, account",
+     "<b>No</b>, caps only",
+     "Guardrails for whole accounts (incl. member root user)"
+    ],
+    [
+     "<b>RCP</b> (resource control policy)",
+     "Org root, OU, account",
+     "<b>No</b>, caps only",
+     "Cap what <b>resources</b> allow, e.g. block outside principals"
+    ]
+   ]
+  },
+  {
+   "type": "traps",
+   "items": [
+    "SCPs <b>don't affect the management account</b> or service-linked roles.",
+    "<code>Principal</code> appears only in resource and trust policies, never in identity policies.",
+    "Restrict regions → SCP with <code>aws:RequestedRegion</code>. Only my org → <code>aws:PrincipalOrgID</code>."
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"prevent all accounts from doing X\"",
+     "SCP"
+    ],
+    [
+     "\"developers create roles but can't exceed Y\"",
+     "Permission boundary"
+    ],
+    [
+     "\"only accounts in my organization\"",
+     "aws:PrincipalOrgID"
+    ],
+    [
+     "\"EC2 needs to call S3\"",
+     "IAM role (instance profile), never access keys"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Who signs in: workforce, apps, accounts"
+  },
+  {
+   "type": "table",
+   "head": [
+    "Who",
+    "Answer",
+    "Note"
+   ],
+   "rows": [
+    [
+     "Employees across many accounts",
+     "<b>IAM Identity Center</b>",
+     "Permission sets; connect to AD, Okta, Entra ID"
+    ],
+    [
+     "A script or app in another account",
+     "<b>STS AssumeRole</b>",
+     "Temporary credentials"
+    ],
+    [
+     "Customers sign up and log in to your app",
+     "<b>Cognito user pool</b>",
+     "Returns JWTs; MFA, social login"
+    ],
+    [
+     "Those app users need AWS credentials (e.g. upload to S3)",
+     "<b>Cognito identity pool</b>",
+     "Swaps the login for temporary IAM role credentials"
+    ],
+    [
+     "Authenticate users before they reach the app, no code",
+     "<b>ALB auth</b> with Cognito or OIDC",
+     "ALB only, not NLB or CloudFront"
+    ],
+    [
+     "Corporate AD in AWS",
+     "<b>Managed Microsoft AD</b> (full AD, trusts) or <b>AD Connector</b> (proxy to on-prem AD)",
+     "Simple AD: small, standalone"
+    ]
+   ]
+  },
+  {
+   "type": "table",
+   "head": [
+    "Multi-account",
+    "Answer"
+   ],
+   "rows": [
+    [
+     "Set up a well-architected multi-account landing zone",
+     "<b>Control Tower</b> (controls = SCPs + Config rules)"
+    ],
+    [
+     "Central billing, volume discounts, shared RIs/Savings Plans",
+     "<b>Organizations</b> consolidated billing"
+    ],
+    [
+     "Enforce allowed tag values",
+     "<b>Tag policy</b> (reports); block untagged launches with an SCP"
+    ],
+    [
+     "Share subnets, TGWs, etc. with other accounts",
+     "<b>RAM</b>"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"SSO for workforce across accounts\"",
+     "IAM Identity Center"
+    ],
+    [
+     "\"mobile users upload to S3\"",
+     "Cognito user pool + identity pool"
+    ],
+    [
+     "\"new accounts with guardrails automatically\"",
+     "Control Tower"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "KMS keys and S3 encryption",
+   "weak": "s3-enc"
+  },
+  {
+   "type": "table",
+   "head": [
+    "Option",
+    "Who manages the key",
+    "Key use in CloudTrail",
+    "Rotation",
+    "Pick when"
+   ],
+   "rows": [
+    [
+     "<b>SSE-S3</b>",
+     "AWS, fully",
+     "<b>No</b>",
+     "AWS",
+     "Default, simplest; no audit need"
+    ],
+    [
+     "<b>SSE-KMS, AWS managed key</b> (aws/s3)",
+     "AWS in your account",
+     "<b>Yes</b>",
+     "Yearly, automatic",
+     "Audit + least effort"
+    ],
+    [
+     "<b>SSE-KMS, customer managed key</b>",
+     "You",
+     "<b>Yes</b>",
+     "You choose (90-2,560 days) or on demand",
+     "Custom key policy, <b>cross-account</b>, own rotation, disable/delete"
+    ],
+    [
+     "<b>DSSE-KMS</b>",
+     "You or AWS",
+     "Yes",
+     "Like SSE-KMS",
+     "Two layers of encryption (compliance)"
+    ],
+    [
+     "<b>SSE-C</b>",
+     "You send the key on every request",
+     "No",
+     "Yours",
+     "Keys must never be stored in AWS"
+    ],
+    [
+     "<b>Client-side</b>",
+     "You",
+     "No",
+     "Yours",
+     "Encrypt before it leaves your app"
+    ]
+   ]
+  },
+  {
+   "type": "traps",
+   "items": [
+    "Audit of key usage rules out <b>SSE-S3</b>.",
+    "Sharing encrypted data or snapshots with another account needs a <b>customer managed key</b> (you can't edit an AWS managed key's policy).",
+    "High request rates with SSE-KMS hit KMS quotas → enable <b>S3 Bucket Keys</b> (up to 99% fewer KMS calls)."
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"audit key usage\" + \"least effort\"",
+     "SSE-KMS with AWS managed key"
+    ],
+    [
+     "\"control rotation\" / \"cross-account\"",
+     "SSE-KMS with customer managed key"
+    ],
+    [
+     "\"reduce KMS cost/throttling on S3\"",
+     "S3 Bucket Keys"
+    ],
+    [
+     "\"share encrypted snapshot\"",
+     "Customer managed key + key policy grant + share snapshot"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Multi-region keys",
+   "weak": "mrk"
+  },
+  {
+   "type": "p",
+   "html": "KMS keys are <b>regional</b>. A <b>multi-region key</b> is a set of related keys in several regions with the <b>same key ID and key material</b>, so data encrypted in one region can be decrypted in another without re-encrypting through KMS."
+  },
+  {
+   "type": "table",
+   "head": [
+    "Fact",
+    "Detail"
+   ],
+   "rows": [
+    [
+     "Convert an existing single-region key?",
+     "<b>No</b>. Create a new multi-region key and its replicas"
+    ],
+    [
+     "Existing bucket switching to it",
+     "<b>No new bucket needed</b>: change default encryption to the new key, then re-encrypt existing objects (copy in place or Batch Operations)"
+    ],
+    [
+     "Typical uses",
+     "S3 replication with SSE-KMS, DynamoDB global tables, cross-region DR, client-side encryption"
+    ],
+    [
+     "Still independent",
+     "Each replica has its own key policy and is managed per region"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"same key in both regions\" + replication",
+     "Multi-region key"
+    ],
+    [
+     "\"convert my existing key\"",
+     "Not possible: create a new MRK"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Secrets, certificates and HSMs"
+  },
+  {
+   "type": "table",
+   "head": [
+    "Need",
+    "Answer",
+    "Note"
+   ],
+   "rows": [
+    [
+     "DB passwords with automatic rotation",
+     "<b>Secrets Manager</b>",
+     "Built-in rotation for RDS/Aurora/Redshift/DocumentDB; <b>native multi-region replication</b>"
+    ],
+    [
+     "Config values and simple secrets, cheap",
+     "<b>SSM Parameter Store</b>",
+     "SecureString via KMS; no built-in rotation"
+    ],
+    [
+     "Free public TLS certificates, auto-renew",
+     "<b>ACM</b>",
+     "Use on ALB, CloudFront, API Gateway. CloudFront certs must be in <b>us-east-1</b>"
+    ],
+    [
+     "Single-tenant HSM you control, FIPS 140 Level 3",
+     "<b>CloudHSM</b>",
+     "KMS HSMs are now Level 3 validated too, but \"single-tenant / you control\" = CloudHSM"
+    ]
+   ]
+  },
+  {
+   "type": "traps",
+   "items": [
+    "ACM public certs could not be exported for EC2 for years; exportable public certificates arrived in 2025. The exam answer is still <b>terminate TLS on the ALB or CloudFront</b>.",
+    "Secrets needed in two regions → Secrets Manager <b>replication</b>, not a script."
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"rotate DB credentials automatically\"",
+     "Secrets Manager"
+    ],
+    [
+     "\"secret in a DR region\"",
+     "Secrets Manager multi-region replication"
+    ],
+    [
+     "\"dedicated HSM\" / \"customer-only access\"",
+     "CloudHSM"
+    ],
+    [
+     "\"HTTPS certificate for CloudFront\"",
+     "ACM in us-east-1"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Detect and audit: which security service?"
+  },
+  {
+   "type": "table",
+   "head": [
+    "Question asks",
+    "Service",
+    "Not to be confused with"
+   ],
+   "rows": [
+    [
+     "Threats: unusual API calls, crypto-mining, compromised instances",
+     "<b>GuardDuty</b>",
+     "Inspector (software flaws)"
+    ],
+    [
+     "Software vulnerabilities (CVEs) in EC2, ECR images, Lambda",
+     "<b>Inspector</b>",
+     "Access Analyzer (permissions)"
+    ],
+    [
+     "PII or sensitive data in S3",
+     "<b>Macie</b>",
+     "GuardDuty"
+    ],
+    [
+     "Resources shared outside my account/org; <b>unused access</b>",
+     "<b>IAM Access Analyzer</b>",
+     "Access Advisor"
+    ],
+    [
+     "When was each service last used by this role",
+     "<b>IAM Access Advisor</b> (last accessed)",
+     "Access Analyzer"
+    ],
+    [
+     "One dashboard of findings + best-practice checks",
+     "<b>Security Hub</b>",
+     ""
+    ],
+    [
+     "Investigate the root cause of a finding",
+     "<b>Detective</b>",
+     "GuardDuty (detects)"
+    ],
+    [
+     "Security logs in one data lake (OCSF)",
+     "<b>Security Lake</b>",
+     ""
+    ],
+    [
+     "WAF, Shield, SG rules across all accounts",
+     "<b>Firewall Manager</b>",
+     ""
+    ],
+    [
+     "DDoS: free L3/L4 vs response team + cost protection",
+     "<b>Shield Standard</b> vs <b>Shield Advanced</b>",
+     ""
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"malicious activity\" / \"compromised\"",
+     "GuardDuty"
+    ],
+    [
+     "\"CVE\" / \"vulnerability scan\"",
+     "Inspector"
+    ],
+    [
+     "\"PII in S3\"",
+     "Macie"
+    ],
+    [
+     "\"shared with external accounts\" / \"unused permissions\"",
+     "IAM Access Analyzer"
+    ],
+    [
+     "\"last accessed\"",
+     "Access Advisor"
+    ]
+   ]
+  }
+ ],
+ "questions": [
+  {
+   "id": "sec-01",
+   "weak": "s3-enc",
+   "q": "A company must encrypt S3 objects, have every use of the key logged in CloudTrail, and keep operations to a minimum. Rotation can be AWS's default. What should they use?",
+   "options": [
+    {
+     "t": "SSE-S3",
+     "why": "No key-usage records in CloudTrail."
+    },
+    {
+     "t": "SSE-KMS with the AWS managed key (aws/s3)",
+     "why": "Right. Audited, rotated yearly, nothing to manage."
+    },
+    {
+     "t": "SSE-KMS with a customer managed key",
+     "why": "Also works, but more to manage than needed."
+    },
+    {
+     "t": "SSE-C",
+     "why": "You manage keys and send them on every request."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "sec-02",
+   "weak": "s3-enc",
+   "q": "Auditors require that the S3 encryption key be rotated every 6 months and that the key can be disabled on demand. What should be used?",
+   "options": [
+    {
+     "t": "SSE-S3",
+     "why": "Rotation isn't configurable and you can't disable the key."
+    },
+    {
+     "t": "SSE-KMS with the AWS managed key",
+     "why": "Yearly rotation, can't change, can't disable."
+    },
+    {
+     "t": "SSE-KMS with a customer managed key",
+     "why": "Right. You set the rotation period (90-2,560 days) and control the key."
+    },
+    {
+     "t": "Client-side encryption with the AWS Encryption SDK",
+     "why": "Possible, but much more work."
+    }
+   ],
+   "answer": [
+    2
+   ]
+  },
+  {
+   "id": "sec-03",
+   "weak": "s3-enc",
+   "q": "A bucket in Account A uses SSE-KMS. Users in Account B must read the objects. Which key setup makes this possible?",
+   "options": [
+    {
+     "t": "The AWS managed key aws/s3, shared with Account B",
+     "why": "You can't change an AWS managed key's policy to share it."
+    },
+    {
+     "t": "A customer managed key whose key policy allows Account B, plus IAM permissions in Account B",
+     "why": "Right."
+    },
+    {
+     "t": "SSE-S3",
+     "why": "Then KMS isn't involved, but the question requires SSE-KMS."
+    },
+    {
+     "t": "A new key in Account B",
+     "why": "Account A's objects are encrypted with A's key."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "sec-04",
+   "weak": "s3-enc",
+   "q": "A high-traffic bucket using SSE-KMS hits KMS request throttling and high KMS costs. What fixes this with the least change?",
+   "options": [
+    {
+     "t": "Switch to SSE-C",
+     "why": "Major change and more work."
+    },
+    {
+     "t": "Enable S3 Bucket Keys",
+     "why": "Right. Cuts KMS calls by up to 99%."
+    },
+    {
+     "t": "Request a larger S3 bucket",
+     "why": "No such thing."
+    },
+    {
+     "t": "Use a multi-region key",
+     "why": "Doesn't reduce calls."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "sec-05",
+   "weak": "mrk",
+   "q": "A company replicates an SSE-KMS bucket to another region and wants the same key ID usable in both. They currently use a single-region customer managed key. What must they do?",
+   "options": [
+    {
+     "t": "Convert the existing key to multi-region",
+     "why": "Not possible."
+    },
+    {
+     "t": "Create a new multi-region key and a replica in the destination region, then use it for the buckets",
+     "why": "Right."
+    },
+    {
+     "t": "Share the key with the other region",
+     "why": "Keys are regional."
+    },
+    {
+     "t": "Use SSE-S3",
+     "why": "Drops KMS."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "sec-06",
+   "fix": "mrk-new-bucket",
+   "q": "After creating a new multi-region key, the team wants the existing bucket's objects encrypted with it. What is the least disruptive way?",
+   "options": [
+    {
+     "t": "Create a new bucket with the key and migrate the app",
+     "why": "Not needed."
+    },
+    {
+     "t": "Set the bucket's default encryption to the new key and re-encrypt existing objects with a copy-in-place (e.g., S3 Batch Operations)",
+     "why": "Right."
+    },
+    {
+     "t": "Rotate the old key",
+     "why": "Rotation keeps the same key; it doesn't switch to the MRK."
+    },
+    {
+     "t": "Nothing; objects switch automatically",
+     "why": "Existing objects keep their old key until re-encrypted."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "sec-07",
+   "weak": "mrk",
+   "q": "Which statement about KMS multi-region keys is true?",
+   "options": [
+    {
+     "t": "They share the same key ID and material across regions",
+     "why": "Right."
+    },
+    {
+     "t": "They're one key object that lives in all regions with one key policy",
+     "why": "Each replica is a separate resource with its own key policy."
+    },
+    {
+     "t": "Any existing key can be made multi-region",
+     "why": "No conversion."
+    },
+    {
+     "t": "They are required for all cross-region replication",
+     "why": "Only when you need the same key in both regions; any destination key works for replication."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "sec-08",
+   "fix": "secrets-replication",
+   "q": "A DR plan needs the application's database credentials available in a second region and kept in sync with rotation. What is the least effort?",
+   "options": [
+    {
+     "t": "A Lambda that copies the secret every hour",
+     "why": "Custom code."
+    },
+    {
+     "t": "Secrets Manager multi-region secret replication",
+     "why": "Right. Native, rotation stays in sync."
+    },
+    {
+     "t": "Store the password in Parameter Store in both regions",
+     "why": "Manual sync, no rotation."
+    },
+    {
+     "t": "Put the password in the AMI",
+     "why": "Insecure."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "sec-09",
+   "fix": "access-analyzer",
+   "q": "Security wants to find roles and users with permissions they haven't used in 90 days, across the organization, as findings. What should they use?",
+   "options": [
+    {
+     "t": "Inspector",
+     "why": "Scans software vulnerabilities."
+    },
+    {
+     "t": "IAM Access Analyzer unused access findings",
+     "why": "Right. It now reports unused roles, keys and permissions."
+    },
+    {
+     "t": "GuardDuty",
+     "why": "Threat detection."
+    },
+    {
+     "t": "Trusted Advisor",
+     "why": "Not per-permission analysis."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "sec-10",
+   "fix": "fips",
+   "q": "A regulator requires a single-tenant HSM where only the customer has access to the keys, FIPS 140 Level 3. What should be used?",
+   "options": [
+    {
+     "t": "AWS KMS with customer managed keys",
+     "why": "KMS HSMs are Level 3 validated now, but they're multi-tenant and AWS-operated."
+    },
+    {
+     "t": "AWS CloudHSM",
+     "why": "Right. Single-tenant, you control the keys."
+    },
+    {
+     "t": "Secrets Manager",
+     "why": "Stores secrets, not an HSM."
+    },
+    {
+     "t": "SSE-C",
+     "why": "Not an HSM."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "sec-11",
+   "fix": "acm-export",
+   "q": "A company needs HTTPS for an app on EC2 instances behind a load balancer, using a free certificate that renews automatically. What is the recommended design?",
+   "options": [
+    {
+     "t": "Install an ACM certificate directly on each EC2 instance",
+     "why": "The exam answer: ACM certs aren't used on EC2 (exportable public certs exist since 2025, but they cost money and you renew the install)."
+    },
+    {
+     "t": "Put the ACM certificate on an ALB and terminate TLS there",
+     "why": "Right."
+    },
+    {
+     "t": "Use a self-signed certificate",
+     "why": "Browsers won't trust it."
+    },
+    {
+     "t": "Use CloudHSM",
+     "why": "Not a certificate service."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "sec-12",
+   "q": "An app on EC2 must read from DynamoDB. What is the most secure way to give it credentials?",
+   "options": [
+    {
+     "t": "Store an access key in environment variables",
+     "why": "Long-lived keys on disk."
+    },
+    {
+     "t": "Attach an IAM role through an instance profile",
+     "why": "Right. Temporary credentials, rotated automatically."
+    },
+    {
+     "t": "Put credentials in the AMI",
+     "why": "Worse: baked in."
+    },
+    {
+     "t": "Use the root account keys",
+     "why": "Never."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "sec-13",
+   "q": "The company must stop every member account from launching resources outside eu-west-1 and eu-central-1, including actions by account admins. What should be used?",
+   "options": [
+    {
+     "t": "IAM policies in each account",
+     "why": "Admins could change them."
+    },
+    {
+     "t": "An SCP with a Deny when aws:RequestedRegion is not one of the allowed regions",
+     "why": "Right. Applies to everyone in member accounts, including root."
+    },
+    {
+     "t": "AWS Config rules",
+     "why": "Detect, don't prevent."
+    },
+    {
+     "t": "A permission boundary on every user",
+     "why": "Must be on every identity and admins could remove it."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "sec-14",
+   "q": "Developers must be able to create IAM roles for their Lambda functions, but those roles must never have more permissions than a defined set. What should be used?",
+   "options": [
+    {
+     "t": "An SCP",
+     "why": "Caps whole accounts, not developer-created roles specifically."
+    },
+    {
+     "t": "A permission boundary that developers must attach to roles they create",
+     "why": "Right."
+    },
+    {
+     "t": "Give developers AdministratorAccess",
+     "why": "Escalation risk."
+    },
+    {
+     "t": "Resource-based policies on Lambda",
+     "why": "Controls who calls the function."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "sec-15",
+   "q": "A mobile app lets users sign in with Google and then upload photos directly to S3. What is the right combination?",
+   "options": [
+    {
+     "t": "Cognito user pool for sign-in, identity pool to get temporary AWS credentials",
+     "why": "Right."
+    },
+    {
+     "t": "IAM users for each customer",
+     "why": "Doesn't scale and is unsafe."
+    },
+    {
+     "t": "IAM Identity Center",
+     "why": "For workforce, not app customers."
+    },
+    {
+     "t": "An API key in the app",
+     "why": "Leaks easily."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "sec-16",
+   "q": "A company wants to require login before users reach a web app behind an ALB, using its corporate OIDC identity provider, without changing app code. What should they use?",
+   "options": [
+    {
+     "t": "ALB listener rule with OIDC authentication",
+     "why": "Right."
+    },
+    {
+     "t": "NLB with TLS",
+     "why": "NLBs don't authenticate users."
+    },
+    {
+     "t": "CloudFront with signed cookies",
+     "why": "Needs custom logic to issue them."
+    },
+    {
+     "t": "Security group rules",
+     "why": "Network level only."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "sec-17",
+   "q": "Which service finds personal data such as credit card numbers in S3 buckets?",
+   "options": [
+    {
+     "t": "GuardDuty",
+     "why": "Threat detection."
+    },
+    {
+     "t": "Macie",
+     "why": "Right."
+    },
+    {
+     "t": "Inspector",
+     "why": "Software vulnerabilities."
+    },
+    {
+     "t": "Security Hub",
+     "why": "Aggregates findings from others."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "sec-18",
+   "q": "The security team needs to scan EC2 instances and container images in ECR for known software vulnerabilities continuously. What should they use?",
+   "options": [
+    {
+     "t": "Amazon Inspector",
+     "why": "Right."
+    },
+    {
+     "t": "IAM Access Analyzer",
+     "why": "Analyzes permissions, not software."
+    },
+    {
+     "t": "GuardDuty",
+     "why": "Threats from activity, not CVEs."
+    },
+    {
+     "t": "Macie",
+     "why": "Sensitive data in S3."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "sec-19",
+   "q": "A team wants to know which S3 buckets, KMS keys and IAM roles are shared with principals outside the organization. What should they use?",
+   "options": [
+    {
+     "t": "IAM Access Advisor",
+     "why": "Shows last-accessed times, not external sharing."
+    },
+    {
+     "t": "IAM Access Analyzer with the organization as the zone of trust",
+     "why": "Right."
+    },
+    {
+     "t": "CloudTrail",
+     "why": "Logs calls, doesn't analyze policies."
+    },
+    {
+     "t": "Inspector",
+     "why": "Software vulnerabilities."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "sec-20",
+   "q": "An organization with 80 accounts wants employees to sign in once with their corporate identity provider and get role-based access to the accounts they need. What should be used?",
+   "options": [
+    {
+     "t": "IAM users in every account",
+     "why": "80 sets of users to manage."
+    },
+    {
+     "t": "IAM Identity Center connected to the identity provider, with permission sets",
+     "why": "Right."
+    },
+    {
+     "t": "Cognito user pools",
+     "why": "For app customers."
+    },
+    {
+     "t": "Share one admin account",
+     "why": "No least privilege."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  }
+ ],
+ "drills": [
+  {
+   "id": "detect-buckets",
+   "type": "buckets",
+   "title": "Which security service?",
+   "intro": "Tap a finding, then the service that produces it.",
+   "buckets": [
+    "GuardDuty",
+    "Inspector",
+    "Macie",
+    "Access Analyzer"
+   ],
+   "items": [
+    {
+     "t": "EC2 talking to a known crypto-mining domain",
+     "b": 0
+    },
+    {
+     "t": "Critical CVE in a container image",
+     "b": 1
+    },
+    {
+     "t": "Passport numbers found in a bucket",
+     "b": 2
+    },
+    {
+     "t": "KMS key usable by an outside account",
+     "b": 3
+    },
+    {
+     "t": "API calls from an unusual country",
+     "b": 0
+    },
+    {
+     "t": "Lambda function with a vulnerable library",
+     "b": 1
+    },
+    {
+     "t": "Bucket with credit card data",
+     "b": 2
+    },
+    {
+     "t": "Role unused for 120 days",
+     "b": 3,
+     "why": "Access Analyzer now reports unused access too."
+    }
+   ]
+  },
+  {
+   "id": "enc-match",
+   "type": "match",
+   "title": "Match the encryption choice",
+   "intro": "Tap an option, then the requirement it meets.",
+   "pairs": [
+    [
+     "SSE-S3",
+     "Encrypt by default, no audit needed"
+    ],
+    [
+     "SSE-KMS, AWS managed key",
+     "Audit key use with the least effort"
+    ],
+    [
+     "SSE-KMS, customer managed key",
+     "Rotate every 6 months; share with another account"
+    ],
+    [
+     "SSE-C",
+     "Keys must never be stored in AWS"
+    ],
+    [
+     "Multi-region key",
+     "Same key ID in two regions"
+    ],
+    [
+     "S3 Bucket Keys",
+     "Cut KMS calls on a busy bucket"
+    ],
+    [
+     "CloudHSM",
+     "Single-tenant HSM only we control"
+    ]
+   ]
+  },
+  {
+   "id": "who-buckets",
+   "type": "buckets",
+   "title": "Who signs in where?",
+   "intro": "Tap a scenario, then the service.",
+   "buckets": [
+    "IAM Identity Center",
+    "Cognito",
+    "STS AssumeRole",
+    "IAM role on EC2"
+   ],
+   "items": [
+    {
+     "t": "Employees across 50 accounts",
+     "b": 0
+    },
+    {
+     "t": "Customers sign up in a mobile app",
+     "b": 1
+    },
+    {
+     "t": "A script in account A works in account B",
+     "b": 2
+    },
+    {
+     "t": "App on an instance reads S3",
+     "b": 3
+    },
+    {
+     "t": "App users get temporary AWS credentials",
+     "b": 1
+    },
+    {
+     "t": "Workforce SSO with Okta",
+     "b": 0
+    },
+    {
+     "t": "CI pipeline deploys into a prod account",
+     "b": 2
+    },
+    {
+     "t": "No access keys stored on the server",
+     "b": 3
+    }
+   ]
+  },
+  {
+   "id": "sec-keywords",
+   "type": "keyword",
+   "title": "Spot the keyword",
+   "intro": "Tap the phrase that decides the answer.",
+   "items": [
+    {
+     "parts": [
+      "Objects must be encrypted",
+      "and every use of the key",
+      "must appear in CloudTrail,",
+      "with minimal management."
+     ],
+     "key": 2,
+     "answer": "SSE-KMS with AWS managed key",
+     "why": "CloudTrail of key usage rules out SSE-S3; minimal management rules out a customer key."
+    },
+    {
+     "parts": [
+      "The company replicates to us-west-2",
+      "with SSE-KMS",
+      "and needs the same key ID",
+      "in both regions."
+     ],
+     "key": 2,
+     "answer": "KMS multi-region key",
+     "why": "Same key ID across regions = MRK."
+    },
+    {
+     "parts": [
+      "No member account,",
+      "not even its root user,",
+      "may disable CloudTrail",
+      "in any region."
+     ],
+     "key": 1,
+     "answer": "SCP",
+     "why": "Only SCPs restrict member-account root users."
+    },
+    {
+     "parts": [
+      "A security engineer",
+      "wants a list of roles",
+      "with permissions unused for 90 days",
+      "as findings."
+     ],
+     "key": 2,
+     "answer": "IAM Access Analyzer",
+     "why": "Unused access findings live in Access Analyzer now."
+    }
+   ]
+  }
+ ]
+}

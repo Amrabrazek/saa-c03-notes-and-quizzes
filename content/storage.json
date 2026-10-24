@@ -1,0 +1,1089 @@
+{
+ "id": "storage",
+ "title": "Block & file storage",
+ "oneLiner": "Pick the shape: <b>EBS</b> is a disk for one instance in one AZ, <b>EFS</b> is a Linux share across AZs, and <b>FSx</b> is the file system you already know (Windows, Lustre, NetApp, ZFS). <b>gp3</b> sets IOPS without buying space.",
+ "notes": [
+  {
+   "type": "h2",
+   "text": "Block, file or object?"
+  },
+  {
+   "type": "p",
+   "html": "First decide the <b>shape</b>: a disk for one instance (block), a folder many machines share (file), or objects you fetch by key (S3). Then pick the product."
+  },
+  {
+   "type": "diagram",
+   "src": "content/diagrams/storage-picker.svg",
+   "caption": "Pick the shape first, then the product"
+  },
+  {
+   "type": "table",
+   "head": [
+    "",
+    "EBS",
+    "EFS",
+    "Instance store"
+   ],
+   "rows": [
+    [
+     "Type",
+     "Block disk",
+     "Shared NFS file system",
+     "Physical disk on the host"
+    ],
+    [
+     "Attach to",
+     "<b>One instance</b> (io1/io2 Multi-Attach aside)",
+     "<b>Thousands</b>, across AZs",
+     "Its own instance only"
+    ],
+    [
+     "Scope",
+     "<b>One AZ</b>",
+     "Regional (or One Zone)",
+     "One host"
+    ],
+    [
+     "Survives stop?",
+     "Yes",
+     "Yes",
+     "<b>No</b>"
+    ],
+    [
+     "OS",
+     "Linux + Windows",
+     "<b>Linux only</b>",
+     "Any"
+    ],
+    [
+     "Pick for",
+     "Boot volumes, databases",
+     "Shared content, home dirs, containers",
+     "Highest IOPS, cache, scratch"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"shared\" + \"Linux\" + \"multiple AZs\"",
+     "EFS"
+    ],
+    [
+     "\"highest IOPS\" + \"data can be lost\"",
+     "Instance store"
+    ],
+    [
+     "\"persistent disk for one instance\"",
+     "EBS"
+    ],
+    [
+     "\"move EBS to another AZ\"",
+     "Snapshot → new volume in that AZ"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "EBS volume types"
+  },
+  {
+   "type": "table",
+   "head": [
+    "Type",
+    "Kind",
+    "Exam facts",
+    "Pick when"
+   ],
+   "rows": [
+    [
+     "<b>gp3</b>",
+     "SSD",
+     "3,000 IOPS baseline; IOPS and throughput set <b>independently of size</b> (16,000 IOPS on the exam)",
+     "Default for almost everything; cheaper than gp2"
+    ],
+    [
+     "<b>gp2</b>",
+     "SSD",
+     "IOPS <b>tied to size</b>: 3 IOPS per GB, bursts",
+     "Legacy; migrate to gp3"
+    ],
+    [
+     "<b>io2 Block Express / io1</b>",
+     "SSD",
+     "Up to 256,000 IOPS; <b>Multi-Attach</b> (same AZ, up to 16 instances)",
+     "Critical DBs needing sustained IOPS"
+    ],
+    [
+     "<b>st1</b>",
+     "HDD",
+     "Throughput-optimized; <b>can't boot</b>",
+     "Big sequential reads: logs, data warehouses"
+    ],
+    [
+     "<b>sc1</b>",
+     "HDD",
+     "Cheapest; <b>can't boot</b>",
+     "Cold, rarely read data"
+    ]
+   ]
+  },
+  {
+   "type": "traps",
+   "items": [
+    "\"More IOPS without paying for more space\" → <b>gp3</b>. With gp2 you'd have to grow the volume.",
+    "gp3's maximum was raised to 80,000 IOPS in 2025. Learn <b>16,000</b> for the exam, and pick io2 when a question needs more than that.",
+    "Multi-Attach needs a <b>cluster-aware file system</b>; plain ext4/xfs will corrupt."
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"cost-effective\" + general SSD",
+     "gp3"
+    ],
+    [
+     "\"more than 16,000 IOPS\" / \"sub-ms, mission critical\"",
+     "io2 Block Express"
+    ],
+    [
+     "\"sequential, big throughput, cheap\"",
+     "st1"
+    ],
+    [
+     "\"boot volume\"",
+     "gp2/gp3/io1/io2 only"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "EBS lifecycle: termination, snapshots, recovery"
+  },
+  {
+   "type": "table",
+   "head": [
+    "Event",
+    "Root EBS",
+    "Extra EBS",
+    "Instance store"
+   ],
+   "rows": [
+    [
+     "Stop",
+     "Kept",
+     "Kept",
+     "<b>Lost</b>"
+    ],
+    [
+     "Terminate",
+     "<b>Deleted</b> by default (DeleteOnTermination)",
+     "Kept by default",
+     "Lost"
+    ],
+    [
+     "Hibernate",
+     "Kept (RAM saved to it)",
+     "Kept",
+     "Lost"
+    ]
+   ]
+  },
+  {
+   "type": "table",
+   "head": [
+    "Snapshot feature",
+    "What it does"
+   ],
+   "rows": [
+    [
+     "Incremental snapshots",
+     "Only changed blocks; stored in S3 behind the scenes"
+    ],
+    [
+     "Copy across regions",
+     "DR and migration; encryption can be added during the copy"
+    ],
+    [
+     "<b>Snapshot Archive</b>",
+     "About 75% cheaper storage; 24-72 h to restore"
+    ],
+    [
+     "<b>Recycle Bin</b>",
+     "Recover snapshots or AMIs deleted by mistake within a retention period"
+    ],
+    [
+     "<b>Fast Snapshot Restore</b>",
+     "No first-read slowness on new volumes (extra cost)"
+    ],
+    [
+     "<b>Data Lifecycle Manager</b> / AWS Backup",
+     "Schedule and expire snapshots"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"keep root volume after termination\"",
+     "DeleteOnTermination = false"
+    ],
+    [
+     "\"recover accidentally deleted snapshots\"",
+     "Recycle Bin"
+    ],
+    [
+     "\"volumes from snapshots must be fast immediately\"",
+     "Fast Snapshot Restore"
+    ],
+    [
+     "\"encrypt an existing volume\"",
+     "Snapshot → encrypted copy → new volume"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "EFS and FSx: which file system?"
+  },
+  {
+   "type": "table",
+   "head": [
+    "Trigger",
+    "Answer",
+    "Why / note"
+   ],
+   "rows": [
+    [
+     "Linux, NFS, many instances or AZs, grows by itself",
+     "<b>EFS</b>",
+     "Throughput: <b>Elastic</b> (default choice), Provisioned or Bursting. IA and Archive tiers with lifecycle"
+    ],
+    [
+     "Windows, SMB, Active Directory, DFS",
+     "<b>FSx for Windows File Server</b>",
+     "Multi-AZ option"
+    ],
+    [
+     "HPC, ML training, \"process S3 data fast\"",
+     "<b>FSx for Lustre</b>",
+     "Links to an S3 bucket; Scratch (temp, fastest) or Persistent"
+    ],
+    [
+     "NFS + SMB + iSCSI, or migrating from NetApp",
+     "<b>FSx for NetApp ONTAP</b>",
+     "Multi-protocol, snapshots, tiering"
+    ],
+    [
+     "Migrating ZFS",
+     "<b>FSx for OpenZFS</b>",
+     "NFS; Single-AZ <b>or Multi-AZ</b>"
+    ]
+   ]
+  },
+  {
+   "type": "traps",
+   "items": [
+    "Windows file shares → never EFS (Linux/NFS only).",
+    "\"Lowest latency shared storage for a few Linux HPC nodes reading S3\" → Lustre, not EFS."
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"SMB\" / \"Windows\" / \"AD\"",
+     "FSx for Windows"
+    ],
+    [
+     "\"HPC\" / \"Lustre\" / \"S3 dataset\"",
+     "FSx for Lustre"
+    ],
+    [
+     "\"multi-protocol\" / \"NetApp\"",
+     "FSx for ONTAP"
+    ],
+    [
+     "\"ZFS\"",
+     "FSx for OpenZFS"
+    ],
+    [
+     "\"Linux\" + \"shared\" + \"auto-scale\"",
+     "EFS"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Hybrid storage and moving data"
+  },
+  {
+   "type": "table",
+   "head": [
+    "Need",
+    "Answer",
+    "Note"
+   ],
+   "rows": [
+    [
+     "On-prem apps use S3 as an NFS/SMB share",
+     "<b>S3 File Gateway</b>",
+     "Local cache, objects land in S3"
+    ],
+    [
+     "On-prem block volumes backed up to AWS",
+     "<b>Volume Gateway</b>",
+     "Cached: data in S3, hot data local. Stored: data local, async backup"
+    ],
+    [
+     "Replace physical tapes",
+     "<b>Tape Gateway</b>",
+     "Virtual tapes in S3 / Glacier"
+    ],
+    [
+     "Local cache for FSx for Windows shares",
+     "FSx File Gateway",
+     "<b>Not available to new customers since 2024</b>"
+    ],
+    [
+     "Online copy, scheduled, NFS/SMB/HDFS → S3/EFS/FSx",
+     "<b>DataSync</b>",
+     "Agent on-prem; also AWS ↔ AWS"
+    ],
+    [
+     "Offline: huge data, little bandwidth",
+     "<b>Snowball Edge</b>",
+     "Snowcone/Snowmobile retired"
+    ],
+    [
+     "Partners upload with SFTP/FTPS",
+     "<b>Transfer Family</b>",
+     "Backends: S3 or EFS"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"replace tape library\"",
+     "Tape Gateway"
+    ],
+    [
+     "\"on-prem file share backed by S3\"",
+     "S3 File Gateway"
+    ],
+    [
+     "\"migrate NFS data online, schedule, verify\"",
+     "DataSync"
+    ],
+    [
+     "\"SFTP into S3\"",
+     "Transfer Family"
+    ]
+   ]
+  }
+ ],
+ "questions": [
+  {
+   "id": "st-01",
+   "fix": "gp3-iops",
+   "q": "A database on EBS gp2 needs 12,000 IOPS but only 500 GB of space. The team wants the cheapest option that meets the IOPS without buying extra space. What should they do?",
+   "options": [
+    {
+     "t": "Grow the gp2 volume to 4,000 GB",
+     "why": "gp2 IOPS are tied to size (3/GB), so you'd pay for space you don't need."
+    },
+    {
+     "t": "Change to gp3 and provision 12,000 IOPS",
+     "why": "Right. gp3 sets IOPS independently of size."
+    },
+    {
+     "t": "Change to io2",
+     "why": "Works but costs more than gp3 at this level."
+    },
+    {
+     "t": "Change to st1",
+     "why": "HDD; can't deliver this IOPS and can't boot."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "st-02",
+   "fix": "gp3-iops",
+   "q": "A transactional database needs 60,000 sustained IOPS with sub-millisecond latency. Which volume type should be used on the exam?",
+   "options": [
+    {
+     "t": "gp3",
+     "why": "On the exam gp3 tops out at 16,000 IOPS (raised in 2025, but learn 16,000)."
+    },
+    {
+     "t": "io2 Block Express",
+     "why": "Right. Built for high, sustained IOPS."
+    },
+    {
+     "t": "st1",
+     "why": "HDD, throughput-oriented."
+    },
+    {
+     "t": "sc1",
+     "why": "Cold HDD."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "st-03",
+   "q": "A Windows application on several EC2 instances needs a shared file system using SMB with Active Directory permissions. What should be used?",
+   "options": [
+    {
+     "t": "Amazon EFS",
+     "why": "EFS is NFS for Linux only."
+    },
+    {
+     "t": "Amazon FSx for Windows File Server",
+     "why": "Right."
+    },
+    {
+     "t": "EBS Multi-Attach",
+     "why": "Block storage, needs a cluster file system, not SMB."
+    },
+    {
+     "t": "S3 with S3 File Gateway",
+     "why": "For on-prem access to S3, not EC2 shared drives."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "st-04",
+   "q": "An ML team trains on a 200 TB dataset in S3 and needs a high-performance file system for a two-day training job. Cost matters. What should they use?",
+   "options": [
+    {
+     "t": "FSx for Lustre, scratch deployment, linked to the S3 bucket",
+     "why": "Right. Fast, temporary, reads S3 directly."
+    },
+    {
+     "t": "EFS with Provisioned throughput",
+     "why": "Much slower for HPC and costlier for this burst."
+    },
+    {
+     "t": "FSx for Windows",
+     "why": "Windows SMB."
+    },
+    {
+     "t": "FSx for Lustre, persistent deployment",
+     "why": "Works, but scratch is cheaper for a short job."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "st-05",
+   "q": "A company is moving from on-premises NetApp storage that serves NFS and SMB clients and some iSCSI LUNs. They want the least change. What should they use?",
+   "options": [
+    {
+     "t": "EFS + FSx for Windows",
+     "why": "Splits protocols across two services."
+    },
+    {
+     "t": "FSx for NetApp ONTAP",
+     "why": "Right. Multi-protocol, same NetApp features."
+    },
+    {
+     "t": "FSx for OpenZFS",
+     "why": "NFS only."
+    },
+    {
+     "t": "Storage Gateway",
+     "why": "A hybrid bridge, not a replacement for the array."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "st-06",
+   "fix": "openzfs",
+   "q": "A company migrates a ZFS file server and needs high availability across AZs. Which statement is true?",
+   "options": [
+    {
+     "t": "FSx for OpenZFS is single-AZ only, so use EFS",
+     "why": "Out of date. OpenZFS supports Multi-AZ."
+    },
+    {
+     "t": "FSx for OpenZFS supports Multi-AZ deployments",
+     "why": "Right."
+    },
+    {
+     "t": "ZFS must run on EC2 with EBS",
+     "why": "Not needed."
+    },
+    {
+     "t": "Use FSx for Lustre",
+     "why": "Not a ZFS migration path."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "st-07",
+   "q": "Web servers in three AZs need the same Linux file share for uploaded content. Throughput needs swing a lot during the day. What should be used?",
+   "options": [
+    {
+     "t": "EBS gp3 with Multi-Attach",
+     "why": "gp3 can't multi-attach, and EBS is one AZ."
+    },
+    {
+     "t": "EFS with Elastic throughput",
+     "why": "Right. Shared across AZs, throughput scales with demand."
+    },
+    {
+     "t": "Instance store",
+     "why": "Not shared, lost on stop."
+    },
+    {
+     "t": "FSx for Windows",
+     "why": "SMB, and these are Linux servers."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "st-08",
+   "q": "A cluster-aware application needs several EC2 instances in one AZ to write to the same block volume at the same time. What should be used?",
+   "options": [
+    {
+     "t": "EBS io2 with Multi-Attach",
+     "why": "Right. Same AZ, up to 16 instances, cluster-aware FS required."
+    },
+    {
+     "t": "EBS gp3 with Multi-Attach",
+     "why": "gp3 doesn't support Multi-Attach."
+    },
+    {
+     "t": "EFS",
+     "why": "That's file storage; the question asks for a shared block volume."
+    },
+    {
+     "t": "Instance store",
+     "why": "Not shared."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "st-09",
+   "q": "A cache layer needs the highest possible random I/O. Data is copied from S3 at boot and can be lost. What is the cheapest, fastest option?",
+   "options": [
+    {
+     "t": "EBS io2",
+     "why": "Fast but pays for durability you don't need."
+    },
+    {
+     "t": "Instance store",
+     "why": "Right. Highest IOPS, included with the instance, data is temporary."
+    },
+    {
+     "t": "EFS",
+     "why": "Network file system, slower."
+    },
+    {
+     "t": "gp3",
+     "why": "Slower than local NVMe."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "st-10",
+   "q": "An instance was terminated and its root volume data is gone. Next time the team wants the root volume kept. What should they set?",
+   "options": [
+    {
+     "t": "Enable hibernation",
+     "why": "Hibernation is for stop/start, not termination."
+    },
+    {
+     "t": "Set DeleteOnTermination to false for the root volume",
+     "why": "Right."
+    },
+    {
+     "t": "Use instance store",
+     "why": "Always lost."
+    },
+    {
+     "t": "Take an AMI after termination",
+     "why": "Too late."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "st-11",
+   "q": "An admin deleted important EBS snapshots by mistake. The company wants to be able to recover such deletions for 14 days with the least effort. What should they use?",
+   "options": [
+    {
+     "t": "Recycle Bin retention rule for snapshots",
+     "why": "Right."
+    },
+    {
+     "t": "Glacier Vault Lock",
+     "why": "For Glacier vaults, not snapshots."
+    },
+    {
+     "t": "An IAM deny on DeleteSnapshot",
+     "why": "Prevents deletes entirely; not a recovery feature."
+    },
+    {
+     "t": "Snapshot Archive",
+     "why": "Cheaper storage, not delete protection."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "st-12",
+   "q": "Snapshots must be kept 7 years for compliance and are almost never restored. What cuts their storage cost the most?",
+   "options": [
+    {
+     "t": "Copy them to another region",
+     "why": "Doubles cost."
+    },
+    {
+     "t": "Move them to the EBS Snapshot Archive tier",
+     "why": "Right. ~75% cheaper; 24-72 h restore is fine here."
+    },
+    {
+     "t": "Fast Snapshot Restore",
+     "why": "Adds cost for speed."
+    },
+    {
+     "t": "Convert to gp3",
+     "why": "Volumes, not snapshots."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "st-13",
+   "q": "An EBS volume in us-east-1a must be used by an instance in us-east-1b. What should be done?",
+   "options": [
+    {
+     "t": "Detach and attach it in 1b",
+     "why": "EBS volumes are locked to their AZ."
+    },
+    {
+     "t": "Snapshot it and create a new volume from the snapshot in us-east-1b",
+     "why": "Right."
+    },
+    {
+     "t": "Enable Multi-Attach",
+     "why": "Same AZ only."
+    },
+    {
+     "t": "Use DataSync",
+     "why": "Not for EBS volumes."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "st-14",
+   "q": "On-premises applications need NFS access to files that are stored as objects in S3, with a local cache for frequently used files. What should be used?",
+   "options": [
+    {
+     "t": "S3 File Gateway",
+     "why": "Right."
+    },
+    {
+     "t": "Volume Gateway (stored)",
+     "why": "Block storage over iSCSI."
+    },
+    {
+     "t": "DataSync",
+     "why": "Moves data; doesn't present a file share."
+    },
+    {
+     "t": "EFS",
+     "why": "In AWS, not a local cache."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "st-15",
+   "q": "A company wants to stop using physical tapes but keep its existing backup software that writes to tape libraries. What should it use?",
+   "options": [
+    {
+     "t": "Tape Gateway",
+     "why": "Right. Virtual tape library, tapes stored in S3/Glacier."
+    },
+    {
+     "t": "Volume Gateway",
+     "why": "Block volumes."
+    },
+    {
+     "t": "S3 File Gateway",
+     "why": "File shares."
+    },
+    {
+     "t": "Snowball Edge",
+     "why": "One-off transfer, not a tape replacement."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "st-16",
+   "fix": "fsx-file-gateway",
+   "q": "A new customer in 2026 wants a low-latency on-premises cache for an FSx for Windows file share. What should the architect keep in mind?",
+   "options": [
+    {
+     "t": "FSx File Gateway is the standard answer and available to everyone",
+     "why": "It's no longer available to new customers (since late 2024)."
+    },
+    {
+     "t": "FSx File Gateway isn't offered to new customers; consider alternatives such as FSx for Windows over DX/VPN or third-party caching",
+     "why": "Right. Older exam questions may still list it."
+    },
+    {
+     "t": "Use Tape Gateway",
+     "why": "Not a file cache."
+    },
+    {
+     "t": "Use EFS",
+     "why": "Not Windows."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "st-17",
+   "q": "A company must copy 80 TB from an on-prem NFS server to EFS over a 10 Gbps Direct Connect link, with integrity checks and a nightly sync after that. What should they use?",
+   "options": [
+    {
+     "t": "Snowball Edge",
+     "why": "Offline; the network is good enough, and nightly syncs need an online tool."
+    },
+    {
+     "t": "AWS DataSync",
+     "why": "Right. Online, scheduled, verified transfers to EFS."
+    },
+    {
+     "t": "S3 Transfer Acceleration",
+     "why": "For S3 uploads over the internet."
+    },
+    {
+     "t": "rsync from one EC2 instance",
+     "why": "Works but you build and run everything."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "st-18",
+   "q": "Partners must upload files over SFTP straight into an S3 bucket, without managing servers. What should be used?",
+   "options": [
+    {
+     "t": "AWS Transfer Family",
+     "why": "Right."
+    },
+    {
+     "t": "An EC2 SFTP server",
+     "why": "You manage it."
+    },
+    {
+     "t": "DataSync",
+     "why": "Not an SFTP endpoint for partners."
+    },
+    {
+     "t": "S3 File Gateway",
+     "why": "On-prem file share."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "st-19",
+   "q": "Which TWO EBS volume types can't be used as boot volumes?",
+   "multi": true,
+   "options": [
+    {
+     "t": "gp3",
+     "why": "Can boot."
+    },
+    {
+     "t": "st1",
+     "why": "Right. HDD types can't boot."
+    },
+    {
+     "t": "io2",
+     "why": "Can boot."
+    },
+    {
+     "t": "sc1",
+     "why": "Right."
+    },
+    {
+     "t": "gp2",
+     "why": "Can boot."
+    }
+   ],
+   "answer": [
+    1,
+    3
+   ]
+  },
+  {
+   "id": "st-20",
+   "q": "A company needs to move 3 PB from a remote site with a 100 Mbps link within a few weeks. What should they use?",
+   "options": [
+    {
+     "t": "DataSync over the internet",
+     "why": "100 Mbps would take years for 3 PB."
+    },
+    {
+     "t": "Multiple Snowball Edge devices",
+     "why": "Right. Offline transfer at petabyte scale."
+    },
+    {
+     "t": "Snowmobile",
+     "why": "Retired in 2024."
+    },
+    {
+     "t": "Direct Connect",
+     "why": "Takes weeks to set up and the site link is the limit."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  }
+ ],
+ "drills": [
+  {
+   "id": "ebs-or-efs",
+   "type": "thisorthat",
+   "title": "EBS or EFS?",
+   "intro": "60 seconds. Tap the one that fits.",
+   "a": "EBS",
+   "b": "EFS",
+   "seconds": 60,
+   "items": [
+    {
+     "t": "Boot volume",
+     "ans": "a"
+    },
+    {
+     "t": "Shared by 50 Linux instances",
+     "ans": "b"
+    },
+    {
+     "t": "Locked to one AZ",
+     "ans": "a"
+    },
+    {
+     "t": "Works across AZs",
+     "ans": "b"
+    },
+    {
+     "t": "Choose gp3 or io2",
+     "ans": "a"
+    },
+    {
+     "t": "Elastic throughput mode",
+     "ans": "b"
+    },
+    {
+     "t": "Database data volume for one instance",
+     "ans": "a"
+    },
+    {
+     "t": "Mount from Lambda",
+     "ans": "b"
+    },
+    {
+     "t": "Snapshots to move between AZs",
+     "ans": "a"
+    },
+    {
+     "t": "NFS protocol",
+     "ans": "b"
+    }
+   ]
+  },
+  {
+   "id": "fs-match",
+   "type": "match",
+   "title": "Match the file system",
+   "intro": "Tap a service, then its trigger.",
+   "pairs": [
+    [
+     "EFS",
+     "Linux web servers in 3 AZs share uploads"
+    ],
+    [
+     "FSx for Windows",
+     "SMB shares with AD permissions"
+    ],
+    [
+     "FSx for Lustre",
+     "HPC job reading a dataset in S3"
+    ],
+    [
+     "FSx for ONTAP",
+     "NFS + SMB + iSCSI from NetApp"
+    ],
+    [
+     "FSx for OpenZFS",
+     "Moving a ZFS server"
+    ],
+    [
+     "Instance store",
+     "Scratch space, highest IOPS"
+    ],
+    [
+     "EBS io2",
+     "One DB needing 100k IOPS"
+    ]
+   ]
+  },
+  {
+   "id": "hybrid-storage-buckets",
+   "type": "buckets",
+   "title": "Gateway, DataSync, Snowball or Transfer Family?",
+   "intro": "Tap a scenario, then the service.",
+   "buckets": [
+    "Storage Gateway",
+    "DataSync",
+    "Snowball Edge",
+    "Transfer Family"
+   ],
+   "items": [
+    {
+     "t": "Replace a tape library",
+     "b": 0
+    },
+    {
+     "t": "Nightly NFS → EFS sync",
+     "b": 1
+    },
+    {
+     "t": "2 PB, slow link",
+     "b": 2
+    },
+    {
+     "t": "Partners upload over SFTP",
+     "b": 3
+    },
+    {
+     "t": "On-prem app sees S3 as a file share",
+     "b": 0
+    },
+    {
+     "t": "Copy between EFS and S3 on a schedule",
+     "b": 1
+    },
+    {
+     "t": "No network at the site",
+     "b": 2
+    },
+    {
+     "t": "FTPS into S3",
+     "b": 3
+    }
+   ]
+  },
+  {
+   "id": "storage-keywords",
+   "type": "keyword",
+   "title": "Spot the keyword",
+   "intro": "Tap the phrase that decides the answer.",
+   "items": [
+    {
+     "parts": [
+      "A Linux CMS",
+      "runs on instances in three AZs",
+      "and needs one shared folder",
+      "that grows by itself."
+     ],
+     "key": 2,
+     "answer": "EFS",
+     "why": "Shared + Linux + many AZs."
+    },
+    {
+     "parts": [
+      "A database volume",
+      "needs 12,000 IOPS",
+      "but only 200 GB,",
+      "at the lowest cost."
+     ],
+     "key": 2,
+     "answer": "gp3 with provisioned IOPS",
+     "why": "gp3 sets IOPS independently of size."
+    },
+    {
+     "parts": [
+      "A media company",
+      "renders on 100 nodes",
+      "reading source files from S3",
+      "for a weekend job."
+     ],
+     "key": 2,
+     "answer": "FSx for Lustre (scratch)",
+     "why": "HPC + S3 data = Lustre; short job = scratch."
+    },
+    {
+     "parts": [
+      "Finance runs Windows apps",
+      "that need SMB shares",
+      "with Active Directory groups",
+      "across two AZs."
+     ],
+     "key": 1,
+     "answer": "FSx for Windows (Multi-AZ)",
+     "why": "SMB is the tell; EFS can't do it."
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,1142 @@
+{
+ "id": "s3",
+ "title": "S3",
+ "oneLiner": "Pick the class by <b>how often you read</b> and <b>how fast you need it</b>. Lifecycle only moves <b>down</b>. Cross-account needs an allow on <b>both</b> sides. Compliance mode means <b>nobody</b> deletes.",
+ "notes": [
+  {
+   "type": "h2",
+   "text": "Storage classes: pay to store or pay to read",
+   "weak": "ia-gir"
+  },
+  {
+   "type": "p",
+   "html": "Every class trades <b>storage price</b> against <b>retrieval price and wait time</b>. The colder the class, the cheaper to keep and the more it costs (or the longer it takes) to read."
+  },
+  {
+   "type": "diagram",
+   "src": "content/diagrams/s3-lifecycle.svg",
+   "caption": "Lifecycle only moves objects down this list"
+  },
+  {
+   "type": "table",
+   "head": [
+    "Class",
+    "Read speed",
+    "Min storage",
+    "Pick when"
+   ],
+   "rows": [
+    [
+     "<b>Standard</b>",
+     "ms",
+     "none",
+     "Frequent access"
+    ],
+    [
+     "<b>Intelligent-Tiering</b>",
+     "ms (archive tiers optional)",
+     "none",
+     "<b>Unknown or changing</b> access. Small monitoring fee, no retrieval fees"
+    ],
+    [
+     "<b>Standard-IA</b>",
+     "ms",
+     "30 days",
+     "Read <b>now and then</b> (e.g. monthly), must be instant"
+    ],
+    [
+     "<b>One Zone-IA</b>",
+     "ms",
+     "30 days",
+     "Same, but <b>re-creatable</b> data (one AZ)"
+    ],
+    [
+     "<b>Glacier Instant Retrieval</b>",
+     "ms",
+     "90 days",
+     "<b>Archive</b> read about once a quarter or less, still instant"
+    ],
+    [
+     "<b>Glacier Flexible Retrieval</b>",
+     "1-5 min / 3-5 h / 5-12 h",
+     "90 days",
+     "Archive, a wait is fine"
+    ],
+    [
+     "<b>Glacier Deep Archive</b>",
+     "12 h / 48 h",
+     "180 days",
+     "Cheapest; compliance copies kept for years"
+    ],
+    [
+     "<b>Express One Zone</b>",
+     "single-digit ms",
+     "none",
+     "Fastest, one AZ, directory buckets (ML, analytics scratch)"
+    ]
+   ]
+  },
+  {
+   "type": "p",
+   "html": "<b>Standard-IA vs Glacier Instant Retrieval:</b> both are instant. GIR is about 3x cheaper to store but about 3x dearer per GB read. <b>Read monthly → Standard-IA. Read a few times a year → GIR.</b>"
+  },
+  {
+   "type": "traps",
+   "items": [
+    "\"Access pattern unknown\" → <b>Intelligent-Tiering</b>, not a lifecycle guess.",
+    "Lifecycle to Standard-IA or One Zone-IA needs <b>30 days in Standard first</b>. Glacier classes (including GIR) can be <b>day 0</b>. GIR's 90 days is a <b>minimum billing</b> period, not a lifecycle wait.",
+    "<b>One Zone-IA can't transition to GIR</b>. It can go to Glacier Flexible or Deep Archive.",
+    "Objects under 128 KB aren't worth moving to IA classes (billed as 128 KB; lifecycle skips them by default)."
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"unpredictable access\"",
+     "Intelligent-Tiering"
+    ],
+    [
+     "\"accessed monthly\" + \"immediately\"",
+     "Standard-IA"
+    ],
+    [
+     "\"archive\" + \"milliseconds\" + \"rarely\"",
+     "Glacier Instant Retrieval"
+    ],
+    [
+     "\"retrieve within 12 hours\" + cheapest",
+     "Glacier Deep Archive"
+    ],
+    [
+     "\"easily reproduced\" + infrequent",
+     "One Zone-IA"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Lifecycle rules and moving big data in",
+   "weak": "snow-glacier"
+  },
+  {
+   "type": "table",
+   "head": [
+    "Need",
+    "Answer",
+    "Why"
+   ],
+   "rows": [
+    [
+     "Move objects to colder classes over time",
+     "<b>Lifecycle transition</b>",
+     "Downward only"
+    ],
+    [
+     "Delete old objects or old versions",
+     "<b>Lifecycle expiration</b> (noncurrent version expiration)",
+     ""
+    ],
+    [
+     "Clean up failed multipart uploads",
+     "Lifecycle: abort incomplete multipart uploads",
+     "They cost money while hidden"
+    ],
+    [
+     "Petabytes from a data center, slow link",
+     "<b>Snowball Edge</b> → S3, then 0-day lifecycle → Glacier",
+     "Snowball can't target Glacier directly"
+    ],
+    [
+     "Ongoing online copy from NFS/SMB to S3",
+     "<b>DataSync</b>",
+     "Scheduled, incremental, encrypted"
+    ],
+    [
+     "Users far away upload big files to one bucket",
+     "<b>S3 Transfer Acceleration</b>",
+     "Edge locations + backbone, uploads too"
+    ],
+    [
+     "Upload objects over 100 MB",
+     "<b>Multipart upload</b> (required over 5 GB)",
+     "Parallel parts, resumable"
+    ]
+   ]
+  },
+  {
+   "type": "traps",
+   "items": [
+    "Snowcone and Snowmobile were retired in 2024. The offline answer is <b>Snowball Edge</b> (order several devices for petabytes).",
+    "You can't lifecycle an object back up from Glacier. <b>Restore</b> it (temporary copy) or copy it to a new class."
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"Snowball\" + \"Glacier\"",
+     "Import to S3, then a 0-day lifecycle rule"
+    ],
+    [
+     "\"slow uploads from other continents\"",
+     "Transfer Acceleration"
+    ],
+    [
+     "\"remove incomplete uploads\"",
+     "Lifecycle abort-incomplete-multipart rule"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Replication and versioning"
+  },
+  {
+   "type": "table",
+   "head": [
+    "Fact",
+    "Detail"
+   ],
+   "rows": [
+    [
+     "Needs",
+     "<b>Versioning on both</b> source and destination. You create the destination bucket"
+    ],
+    [
+     "CRR vs SRR",
+     "Cross-Region for DR/latency/compliance; Same-Region for log aggregation or prod → test accounts"
+    ],
+    [
+     "Existing objects",
+     "Not replicated automatically. Use <b>S3 Batch Replication</b>"
+    ],
+    [
+     "Delete markers",
+     "Not replicated unless you turn it on. Version deletes never replicate"
+    ],
+    [
+     "SSE-KMS objects",
+     "Must be enabled in the rule; give a key in the destination region (a <b>multi-region key</b> keeps one key ID)"
+    ],
+    [
+     "Fast, SLA-backed replication",
+     "<b>Replication Time Control</b> (99.99% within 15 min)"
+    ],
+    [
+     "One-time copy between buckets",
+     "<code>aws s3 sync</code> or Batch Operations"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"replicate existing objects\"",
+     "S3 Batch Replication"
+    ],
+    [
+     "\"replicate within 15 minutes, guaranteed\"",
+     "Replication Time Control"
+    ],
+    [
+     "\"recover from accidental deletes/overwrites\"",
+     "Versioning (+ MFA Delete)"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Access: bucket policies, IAM, and sharing"
+  },
+  {
+   "type": "table",
+   "head": [
+    "Need",
+    "Answer"
+   ],
+   "rows": [
+    [
+     "Your own users and roles",
+     "<b>IAM policy</b>"
+    ],
+    [
+     "Another AWS account",
+     "<b>Both</b>: bucket policy grants the account, <b>and</b> that account's IAM policy grants its user (or the user assumes a role in your account)"
+    ],
+    [
+     "Never allow public buckets",
+     "<b>Block Public Access</b> at the account level (+ SCP so nobody turns it off)"
+    ],
+    [
+     "Temporary access to one object, no AWS account",
+     "<b>Pre-signed URL</b> (expires; acts with the signer's permissions)"
+    ],
+    [
+     "Many teams, one shared dataset, separate rules",
+     "<b>S3 Access Points</b>"
+    ],
+    [
+     "Only via my VPC",
+     "Bucket policy with <code>aws:SourceVpce</code>"
+    ],
+    [
+     "HTTPS only",
+     "Deny when <code>aws:SecureTransport</code> = false"
+    ],
+    [
+     "Only through CloudFront",
+     "<b>Origin Access Control</b> + bucket policy for the distribution"
+    ],
+    [
+     "Downloader pays transfer",
+     "<b>Requester Pays</b>"
+    ]
+   ]
+  },
+  {
+   "type": "traps",
+   "items": [
+    "A bucket policy alone isn't enough for cross-account access. The other account's admin must also allow it in IAM.",
+    "Disabling ACLs (Object Ownership: bucket owner enforced) is the default; use policies, not ACLs."
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"share one file with a partner for 24 hours\"",
+     "Pre-signed URL"
+    ],
+    [
+     "\"no bucket may ever be public, company-wide\"",
+     "Account-level Block Public Access + SCP"
+    ],
+    [
+     "\"serve S3 only via CloudFront\"",
+     "OAC + bucket policy"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Locking data: Object Lock vs Vault Lock"
+  },
+  {
+   "type": "table",
+   "head": [
+    "",
+    "Who can delete early?",
+    "Note"
+   ],
+   "rows": [
+    [
+     "<b>Object Lock: Governance mode</b>",
+     "Users with <code>s3:BypassGovernanceRetention</code>",
+     "Test your retention settings"
+    ],
+    [
+     "<b>Object Lock: Compliance mode</b>",
+     "<b>Nobody</b>, not even root, and retention can't be shortened",
+     "Regulated WORM"
+    ],
+    [
+     "<b>Legal Hold</b>",
+     "Anyone with <code>s3:PutObjectLegalHold</code> can remove it",
+     "On/off flag, <b>no expiry</b>; not a retention mode"
+    ],
+    [
+     "<b>Glacier Vault Lock</b>",
+     "Nobody after the policy is locked",
+     "Whole-vault policy, old-style Glacier vaults"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"WORM, no one can delete for 7 years\"",
+     "Object Lock Compliance mode"
+    ],
+    [
+     "\"some admins can override\"",
+     "Governance mode"
+    ],
+    [
+     "\"hold during a lawsuit, no end date\"",
+     "Legal Hold"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Events, performance, and features you may see"
+  },
+  {
+   "type": "table",
+   "head": [
+    "Need",
+    "Answer",
+    "Note"
+   ],
+   "rows": [
+    [
+     "Run code when an object is uploaded",
+     "<b>Event notification</b> to Lambda, SQS, SNS, or <b>EventBridge</b>",
+     "EventBridge: filtering, many targets, replay"
+    ],
+    [
+     "Higher request rates",
+     "Spread keys across <b>prefixes</b>",
+     "3,500 writes and 5,500 reads per second per prefix"
+    ],
+    [
+     "Filter rows inside one object before download",
+     "S3 Select",
+     "<b>Closed to new customers since 2024</b>; prefer Athena"
+    ],
+    [
+     "Max object size",
+     "5 TB on the exam",
+     "AWS raised it to 50 TB in late 2025"
+    ],
+    [
+     "Learn which data to move to IA",
+     "<b>Storage Class Analysis</b>",
+     "Recommends lifecycle rules"
+    ],
+    [
+     "Org-wide usage and cost insights",
+     "<b>S3 Storage Lens</b>",
+     ""
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"process image on upload\"",
+     "Event notification → Lambda"
+    ],
+    [
+     "\"many destinations / advanced filtering for S3 events\"",
+     "EventBridge"
+    ],
+    [
+     "\"query CSV in S3 with SQL\"",
+     "Athena"
+    ]
+   ]
+  }
+ ],
+ "questions": [
+  {
+   "id": "s3-01",
+   "weak": "ia-gir",
+   "q": "Reports are read about once a month and must open instantly when needed. The company wants the lowest total cost. Which class fits?",
+   "options": [
+    {
+     "t": "S3 Standard",
+     "why": "Fine for frequent access, but more expensive to store than needed."
+    },
+    {
+     "t": "S3 Standard-IA",
+     "why": "Right. Instant access, cheaper storage, and the retrieval fee is low enough for monthly reads."
+    },
+    {
+     "t": "S3 Glacier Instant Retrieval",
+     "why": "Cheaper to store but its higher per-GB retrieval fee adds up when read monthly."
+    },
+    {
+     "t": "S3 Glacier Flexible Retrieval",
+     "why": "Not instant."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "s3-02",
+   "weak": "ia-gir",
+   "q": "Medical images are kept 10 years and opened maybe twice a year, but when a doctor asks, they must load in milliseconds. What is the most cost-effective class?",
+   "options": [
+    {
+     "t": "S3 Standard-IA",
+     "why": "Instant, but costs more to store than GIR for data this rarely read."
+    },
+    {
+     "t": "S3 Glacier Instant Retrieval",
+     "why": "Right. Archive pricing with millisecond access."
+    },
+    {
+     "t": "S3 Glacier Deep Archive",
+     "why": "Hours to retrieve."
+    },
+    {
+     "t": "S3 One Zone-IA",
+     "why": "Medical records shouldn't sit in one AZ, and GIR is cheaper here."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "s3-03",
+   "weak": "ia-gir",
+   "q": "A data lake's access pattern is unknown and changes over time. The team wants to save money without writing lifecycle rules or paying retrieval fees. What should they use?",
+   "options": [
+    {
+     "t": "S3 Intelligent-Tiering",
+     "why": "Right. Moves objects between tiers by itself; no retrieval fees."
+    },
+    {
+     "t": "Standard-IA with a 30-day lifecycle rule",
+     "why": "Guesswork, and retrieval fees apply."
+    },
+    {
+     "t": "Glacier Instant Retrieval",
+     "why": "Retrieval fees and a 90-day minimum."
+    },
+    {
+     "t": "S3 Standard only",
+     "why": "No savings."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "s3-04",
+   "weak": "snow-glacier",
+   "q": "A company has 2 PB on-premises to archive in Glacier Deep Archive. Their internet link is slow. How should they do it?",
+   "options": [
+    {
+     "t": "Snowball Edge with Deep Archive as the import target",
+     "why": "Snowball imports into S3, not directly into Glacier classes."
+    },
+    {
+     "t": "Snowball Edge into S3, then a lifecycle rule that moves objects to Deep Archive after 0 days",
+     "why": "Right. Pay Standard only for a day or less."
+    },
+    {
+     "t": "DataSync directly to Deep Archive over the internet",
+     "why": "DataSync can write to Deep Archive, but over a slow link 2 PB would take far too long."
+    },
+    {
+     "t": "S3 Transfer Acceleration",
+     "why": "Still limited by the slow link."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "s3-05",
+   "fix": "gir-lifecycle",
+   "q": "A lifecycle rule should move objects from S3 Standard to Glacier Instant Retrieval. What is the earliest the transition can happen?",
+   "options": [
+    {
+     "t": "After 30 days",
+     "why": "That minimum applies to Standard-IA and One Zone-IA."
+    },
+    {
+     "t": "After 90 days",
+     "why": "90 days is GIR's minimum billing period, not a lifecycle wait."
+    },
+    {
+     "t": "Day 0",
+     "why": "Right. Glacier classes can be day-0 transitions."
+    },
+    {
+     "t": "It isn't possible",
+     "why": "It is."
+    }
+   ],
+   "answer": [
+    2
+   ]
+  },
+  {
+   "id": "s3-06",
+   "fix": "onezone-gir",
+   "q": "Objects are in S3 One Zone-IA. Which lifecycle transition is NOT allowed?",
+   "options": [
+    {
+     "t": "One Zone-IA → Glacier Flexible Retrieval",
+     "why": "Allowed."
+    },
+    {
+     "t": "One Zone-IA → Glacier Deep Archive",
+     "why": "Allowed."
+    },
+    {
+     "t": "One Zone-IA → Glacier Instant Retrieval",
+     "why": "Right, this one isn't allowed."
+    },
+    {
+     "t": "Expire (delete) after 365 days",
+     "why": "Expiration is always allowed."
+    }
+   ],
+   "answer": [
+    2
+   ]
+  },
+  {
+   "id": "s3-07",
+   "fix": "s3-cross-account",
+   "q": "Account A owns a bucket. A developer in Account B must read objects from it. Which TWO things are needed?",
+   "multi": true,
+   "options": [
+    {
+     "t": "A bucket policy in Account A that allows Account B (or its role)",
+     "why": "Right."
+    },
+    {
+     "t": "An IAM policy in Account B that allows the developer to read that bucket",
+     "why": "Right. Both sides must allow it."
+    },
+    {
+     "t": "An IAM user for the developer in Account A",
+     "why": "Not needed; that's the old workaround."
+    },
+    {
+     "t": "S3 Access Points in Account B",
+     "why": "Access points belong to the bucket owner's account."
+    },
+    {
+     "t": "Making the bucket public",
+     "why": "Never needed and unsafe."
+    }
+   ],
+   "answer": [
+    0,
+    1
+   ]
+  },
+  {
+   "id": "s3-08",
+   "fix": "object-lock-modes",
+   "q": "Financial records must be stored so that nobody, including the root user, can delete or change them for 7 years. What should be used?",
+   "options": [
+    {
+     "t": "S3 Object Lock in Governance mode",
+     "why": "Users with the bypass permission can still delete."
+    },
+    {
+     "t": "S3 Object Lock in Compliance mode",
+     "why": "Right. Nobody can delete or shorten retention."
+    },
+    {
+     "t": "A Legal Hold",
+     "why": "Has no end date and can be removed by anyone with the permission."
+    },
+    {
+     "t": "Versioning with MFA Delete",
+     "why": "Root with MFA can still delete versions."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "s3-09",
+   "fix": "object-lock-modes",
+   "q": "A company must keep certain objects during a lawsuit with no known end date, and remove the hold when it's over. What should they use?",
+   "options": [
+    {
+     "t": "Compliance mode with 10-year retention",
+     "why": "Can't be shortened when the case ends."
+    },
+    {
+     "t": "Legal Hold",
+     "why": "Right. An on/off flag with no expiry."
+    },
+    {
+     "t": "Governance mode",
+     "why": "Needs a retention date."
+    },
+    {
+     "t": "Glacier Vault Lock",
+     "why": "Locks a vault policy forever."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "s3-10",
+   "fix": "s3-select",
+   "q": "An app needs only a few columns from large CSV files in S3 and runs ad hoc SQL. The team is new to AWS in 2026. What should they use?",
+   "options": [
+    {
+     "t": "S3 Select",
+     "why": "Closed to new customers since 2024."
+    },
+    {
+     "t": "Amazon Athena",
+     "why": "Right. Serverless SQL on S3; even better after converting to Parquet."
+    },
+    {
+     "t": "Download the files to EC2 and filter",
+     "why": "Slow and costly."
+    },
+    {
+     "t": "Redshift with a full load",
+     "why": "Overkill for ad hoc queries."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "s3-11",
+   "fix": "s3-size",
+   "q": "What is the maximum single object size to plan for on the SAA-C03 exam, and what is required above 5 GB?",
+   "options": [
+    {
+     "t": "5 TB; multipart upload",
+     "why": "Right. AWS raised the limit to 50 TB in late 2025, but learn 5 TB for the exam."
+    },
+    {
+     "t": "5 GB; Transfer Acceleration",
+     "why": "5 GB is the single-PUT limit, not the object limit."
+    },
+    {
+     "t": "160 GB; Snowball",
+     "why": "That's a console upload limit."
+    },
+    {
+     "t": "Unlimited; nothing",
+     "why": "There is a limit."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "s3-12",
+   "q": "A company enables Cross-Region Replication on a bucket that already holds 50 million objects. The existing objects don't appear in the destination. What should they do?",
+   "options": [
+    {
+     "t": "Nothing; CRR copies them within 24 hours",
+     "why": "CRR only copies new objects."
+    },
+    {
+     "t": "Run S3 Batch Replication",
+     "why": "Right. It replicates existing objects."
+    },
+    {
+     "t": "Turn on Replication Time Control",
+     "why": "That speeds up new-object replication only."
+    },
+    {
+     "t": "Disable and re-enable versioning",
+     "why": "Doesn't trigger replication."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "s3-13",
+   "weak": "mrk",
+   "q": "A bucket with SSE-KMS objects replicates to another region. The security team wants the same key ID usable in both regions with the least work. What should be used?",
+   "options": [
+    {
+     "t": "Share the KMS key with the other region",
+     "why": "KMS keys are regional; you can't share across regions."
+    },
+    {
+     "t": "A KMS multi-region key with a replica in the destination region",
+     "why": "Right. Same key ID and material in both regions."
+    },
+    {
+     "t": "SSE-S3 instead",
+     "why": "Not KMS; may fail an audit requirement."
+    },
+    {
+     "t": "SSE-C",
+     "why": "You'd manage and send keys yourself."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "s3-14",
+   "q": "Users in Asia and Europe upload 2 GB videos to a bucket in us-east-1 and complain it's slow. What improves upload speed with the least change?",
+   "options": [
+    {
+     "t": "CloudFront caching",
+     "why": "CloudFront speeds up reads by caching; S3TA is the upload answer."
+    },
+    {
+     "t": "S3 Transfer Acceleration",
+     "why": "Right. Uploads enter at the nearest edge and ride the backbone."
+    },
+    {
+     "t": "Cross-Region Replication",
+     "why": "Copies after upload; doesn't speed up the upload."
+    },
+    {
+     "t": "Larger EC2 instances",
+     "why": "No EC2 here."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "s3-15",
+   "q": "A partner without an AWS account must download one private file within the next 24 hours. What is the simplest secure option?",
+   "options": [
+    {
+     "t": "Make the object public for a day",
+     "why": "Risky and manual."
+    },
+    {
+     "t": "Generate a pre-signed URL that expires in 24 hours",
+     "why": "Right."
+    },
+    {
+     "t": "Create an IAM user for the partner",
+     "why": "Overkill, long-lived credentials."
+    },
+    {
+     "t": "Enable Requester Pays",
+     "why": "That's about who pays, not access."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "s3-16",
+   "q": "The security team requires that no S3 bucket in any account can ever be made public. What is the best approach?",
+   "options": [
+    {
+     "t": "Review bucket policies weekly",
+     "why": "Detective, not preventive."
+    },
+    {
+     "t": "Enable S3 Block Public Access at the account level in every account, and use an SCP to stop anyone from disabling it",
+     "why": "Right."
+    },
+    {
+     "t": "Encrypt every bucket with SSE-KMS",
+     "why": "Encryption doesn't stop public access."
+    },
+    {
+     "t": "Use Macie",
+     "why": "Macie finds sensitive data and public buckets, but doesn't block."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "s3-17",
+   "q": "A bucket must only accept requests made over HTTPS. What should be added?",
+   "options": [
+    {
+     "t": "A bucket policy that denies requests when aws:SecureTransport is false",
+     "why": "Right."
+    },
+    {
+     "t": "Enable default encryption",
+     "why": "That's encryption at rest."
+    },
+    {
+     "t": "Enable versioning",
+     "why": "Unrelated."
+    },
+    {
+     "t": "Use SSE-C",
+     "why": "SSE-C requires HTTPS for its own requests, but doesn't block others."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "s3-18",
+   "q": "A website serves images from S3 through CloudFront. Users should not be able to bypass CloudFront and hit the bucket directly. What should be used?",
+   "options": [
+    {
+     "t": "Make the bucket public and use signed URLs",
+     "why": "Public bucket means bypass is possible."
+    },
+    {
+     "t": "Origin Access Control with a bucket policy allowing only the distribution",
+     "why": "Right."
+    },
+    {
+     "t": "S3 Transfer Acceleration",
+     "why": "Unrelated."
+    },
+    {
+     "t": "A NACL on the bucket",
+     "why": "Buckets don't have NACLs."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "s3-19",
+   "q": "Every uploaded image must be resized automatically. Several other teams also want to react to uploads with their own filters. What is the most flexible design?",
+   "options": [
+    {
+     "t": "S3 event notification to one Lambda that calls the other teams",
+     "why": "Tight coupling."
+    },
+    {
+     "t": "Send S3 events to EventBridge and give each team its own rule",
+     "why": "Right. Content filtering, many targets, archive and replay."
+    },
+    {
+     "t": "Poll the bucket every minute",
+     "why": "Slow and wasteful."
+    },
+    {
+     "t": "Replicate to other buckets",
+     "why": "Not an event system."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "s3-20",
+   "q": "Log files are read heavily for 30 days, rarely for the next 60 days, and must be kept for 7 years for compliance but almost never read. Which lifecycle plan is most cost-effective?",
+   "options": [
+    {
+     "t": "Standard → Standard-IA at 30 days → Glacier Deep Archive at 90 days → expire at 7 years",
+     "why": "Right."
+    },
+    {
+     "t": "Standard for 7 years",
+     "why": "Most expensive."
+    },
+    {
+     "t": "Glacier Deep Archive from day 0",
+     "why": "Fails the heavy-read first 30 days."
+    },
+    {
+     "t": "One Zone-IA from day 0",
+     "why": "Lifecycle needs 30 days first, and compliance data shouldn't sit in one AZ."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  }
+ ],
+ "drills": [
+  {
+   "id": "ia-or-gir",
+   "type": "thisorthat",
+   "title": "Standard-IA or Glacier Instant?",
+   "intro": "60 seconds. Both are instant. Which one fits?",
+   "a": "Standard-IA",
+   "b": "Glacier Instant",
+   "seconds": 60,
+   "items": [
+    {
+     "t": "Read about once a month",
+     "ans": "a"
+    },
+    {
+     "t": "Read about once a quarter or less",
+     "ans": "b"
+    },
+    {
+     "t": "90-day minimum storage charge",
+     "ans": "b"
+    },
+    {
+     "t": "30-day minimum storage charge",
+     "ans": "a"
+    },
+    {
+     "t": "Cheaper to store",
+     "ans": "b"
+    },
+    {
+     "t": "Cheaper to read",
+     "ans": "a"
+    },
+    {
+     "t": "Lifecycle can move here on day 0",
+     "ans": "b"
+    },
+    {
+     "t": "Lifecycle needs 30 days in Standard first",
+     "ans": "a"
+    },
+    {
+     "t": "\"Archive\" that still needs milliseconds",
+     "ans": "b"
+    },
+    {
+     "t": "Backups restored a few times a month",
+     "ans": "a"
+    }
+   ]
+  },
+  {
+   "id": "class-buckets",
+   "type": "buckets",
+   "title": "Pick the storage class",
+   "intro": "Tap a scenario, then its class.",
+   "buckets": [
+    "Intelligent-Tiering",
+    "One Zone-IA",
+    "Glacier Flexible",
+    "Deep Archive"
+   ],
+   "items": [
+    {
+     "t": "No idea how often data is read",
+     "b": 0
+    },
+    {
+     "t": "Thumbnails we can regenerate",
+     "b": 1
+    },
+    {
+     "t": "Archive, a few hours' wait is fine",
+     "b": 2
+    },
+    {
+     "t": "Keep 10 years, restore within 48 hours",
+     "b": 3
+    },
+    {
+     "t": "Changing access, no retrieval fees",
+     "b": 0
+    },
+    {
+     "t": "Cheapest possible, compliance copy",
+     "b": 3
+    },
+    {
+     "t": "Secondary copy of on-prem backups",
+     "b": 1
+    },
+    {
+     "t": "Archive with expedited 1-5 minute option",
+     "b": 2
+    }
+   ]
+  },
+  {
+   "id": "s3-match",
+   "type": "match",
+   "title": "Match the S3 feature",
+   "intro": "Tap a feature, then its job.",
+   "pairs": [
+    [
+     "Pre-signed URL",
+     "Time-limited link for someone with no AWS account"
+    ],
+    [
+     "Batch Replication",
+     "Copy objects that existed before replication was set up"
+    ],
+    [
+     "Compliance mode",
+     "Not even root can delete before the date"
+    ],
+    [
+     "Legal Hold",
+     "Keep until the lawsuit ends, no date"
+    ],
+    [
+     "Transfer Acceleration",
+     "Faster uploads from far away"
+    ],
+    [
+     "Access Points",
+     "Separate access rules per team on one bucket"
+    ],
+    [
+     "Block Public Access",
+     "Make public buckets impossible"
+    ]
+   ]
+  },
+  {
+   "id": "s3-keywords",
+   "type": "keyword",
+   "title": "Spot the keyword",
+   "intro": "Tap the phrase that decides the answer.",
+   "items": [
+    {
+     "parts": [
+      "Product photos are stored in S3.",
+      "Traffic varies wildly",
+      "and nobody can predict",
+      "which photos will be popular."
+     ],
+     "key": 2,
+     "answer": "Intelligent-Tiering",
+     "why": "Unpredictable access is its exact use case."
+    },
+    {
+     "parts": [
+      "Old invoices",
+      "are opened a few times a year,",
+      "but when opened",
+      "must load in milliseconds."
+     ],
+     "key": 1,
+     "answer": "Glacier Instant Retrieval",
+     "why": "Rare reads + instant = GIR. Monthly reads would be Standard-IA."
+    },
+    {
+     "parts": [
+      "A studio ships 500 TB on Snowball",
+      "and wants it",
+      "in Glacier Deep Archive",
+      "as cheaply as possible."
+     ],
+     "key": 0,
+     "answer": "Snowball → S3 → 0-day lifecycle",
+     "why": "Snowball can't import straight into a Glacier class."
+    },
+    {
+     "parts": [
+      "Audit logs",
+      "must be impossible to delete,",
+      "even by the root user,",
+      "for 7 years."
+     ],
+     "key": 2,
+     "answer": "Object Lock Compliance mode",
+     "why": "Governance mode lets privileged users bypass."
+    }
+   ]
+  }
+ ]
+}

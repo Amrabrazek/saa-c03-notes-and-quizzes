@@ -1,0 +1,50 @@
+<svg viewBox="0 0 720 400" role="img" aria-label="Choosing storage. One instance needs a disk: EBS, or instance store for scratch data. Many instances share files: Linux NFS uses EFS, Windows SMB uses FSx for Windows, HPC on S3 data uses FSx for Lustre, several protocols or NetApp uses FSx for ONTAP, ZFS uses FSx for OpenZFS. Objects use S3." xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="sp-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="dg-head"/></marker>
+  </defs>
+  <rect x="250" y="12" width="220" height="44" rx="8" class="dg-box"/>
+  <text x="360" y="39" text-anchor="middle" class="dg-t">What kind of storage?</text>
+  <!-- three branches -->
+  <rect x="20" y="96" width="190" height="56" rx="8" class="dg-box"/>
+  <text x="115" y="120" text-anchor="middle" class="dg-t">Disk for ONE instance</text>
+  <text x="115" y="140" text-anchor="middle" class="dg-s">block</text>
+  <rect x="265" y="96" width="190" height="56" rx="8" class="dg-box"/>
+  <text x="360" y="120" text-anchor="middle" class="dg-t">Files shared by MANY</text>
+  <text x="360" y="140" text-anchor="middle" class="dg-s">file system</text>
+  <rect x="510" y="96" width="190" height="56" rx="8" class="dg-box"/>
+  <text x="605" y="120" text-anchor="middle" class="dg-t">Objects via API / URL</text>
+  <text x="605" y="140" text-anchor="middle" class="dg-s">object</text>
+  <path d="M300 56L140 96M360 56V96M420 56L580 96" class="dg-l"/>
+  <!-- block answers -->
+  <rect x="20" y="180" width="190" height="52" rx="8" class="dg-acc"/>
+  <text x="115" y="203" text-anchor="middle" class="dg-t">EBS</text>
+  <text x="115" y="221" text-anchor="middle" class="dg-s">persistent · one AZ</text>
+  <rect x="20" y="246" width="190" height="52" rx="8" class="dg-acc2"/>
+  <text x="115" y="269" text-anchor="middle" class="dg-t">Instance store</text>
+  <text x="115" y="287" text-anchor="middle" class="dg-s">fastest · lost on stop</text>
+  <path d="M115 152V180" class="dg-l" marker-end="url(#sp-arrow)"/>
+  <!-- object -->
+  <rect x="510" y="180" width="190" height="52" rx="8" class="dg-acc"/>
+  <text x="605" y="203" text-anchor="middle" class="dg-t">S3</text>
+  <text x="605" y="221" text-anchor="middle" class="dg-s">regional · 11 nines</text>
+  <path d="M605 152V180" class="dg-l" marker-end="url(#sp-arrow)"/>
+  <!-- file answers -->
+  <path d="M360 152V172" class="dg-l"/>
+  <rect x="245" y="172" width="230" height="216" rx="10" class="dg-box dg-dash" style="fill:none"/>
+  <text x="260" y="196" class="dg-s">Linux NFS, many AZs</text>
+  <text x="460" y="196" text-anchor="end" class="dg-t">EFS</text>
+  <text x="260" y="230" class="dg-s">Windows · SMB · AD</text>
+  <text x="460" y="230" text-anchor="end" class="dg-t">FSx Windows</text>
+  <text x="260" y="264" class="dg-s">HPC · ML · data in S3</text>
+  <text x="460" y="264" text-anchor="end" class="dg-t">FSx Lustre</text>
+  <text x="260" y="298" class="dg-s">NFS + SMB + iSCSI</text>
+  <text x="460" y="298" text-anchor="end" class="dg-t">FSx ONTAP</text>
+  <text x="260" y="332" class="dg-s">ZFS migration</text>
+  <text x="460" y="332" text-anchor="end" class="dg-t">FSx OpenZFS</text>
+  <text x="260" y="370" class="dg-s">On-prem must reach them? VPN/DX</text>
+  <text x="20" y="330" class="dg-s">EBS Multi-Attach: io1/io2,</text>
+  <text x="20" y="348" class="dg-s">same AZ, up to 16 instances,</text>
+  <text x="20" y="366" class="dg-s">cluster-aware file system only.</text>
+  <text x="510" y="260" class="dg-s">On-prem apps see S3 as</text>
+  <text x="510" y="278" class="dg-s">a file share? S3 File Gateway.</text>
+</svg>
