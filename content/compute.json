@@ -1,0 +1,1197 @@
+{
+ "id": "compute",
+ "title": "Compute & scaling",
+ "oneLiner": "Buy by pattern (<b>Spot</b> if it can be interrupted, a <b>Savings Plan</b> if it's steady), bake slow installs into a <b>golden AMI</b>, pick the load balancer by layer (<b>ALB</b> HTTP, <b>NLB</b> TCP/UDP), and let a <b>launch template</b> drive the ASG.",
+ "notes": [
+  {
+   "type": "h2",
+   "text": "Pick a purchase option"
+  },
+  {
+   "type": "p",
+   "html": "Ask the questions in order: can it be interrupted, does it need its own server, is it steady for years? The first <b>yes</b> is the answer. Mixing is normal: a Savings Plan for the baseline, Spot or On-Demand for peaks."
+  },
+  {
+   "type": "diagram",
+   "src": "content/diagrams/compute-buy.svg",
+   "caption": "First yes wins"
+  },
+  {
+   "type": "table",
+   "head": [
+    "Option",
+    "Discount",
+    "Locked to",
+    "Pick when"
+   ],
+   "rows": [
+    [
+     "<b>Compute Savings Plan</b>",
+     "up to ~66%",
+     "Nothing: any family, region, OS, plus <b>Fargate and Lambda</b>",
+     "\"most flexible commitment\""
+    ],
+    [
+     "<b>EC2 Instance Savings Plan</b>",
+     "up to ~72%",
+     "One family in one region (size and OS can change)",
+     "Known family, max discount with some flex"
+    ],
+    [
+     "<b>Standard RI</b>",
+     "up to ~72%",
+     "Type, region, OS, tenancy. Can be sold on the RI Marketplace",
+     "\"maximum discount\" on a fixed workload"
+    ],
+    [
+     "<b>Convertible RI</b>",
+     "up to ~66%",
+     "Can be <b>exchanged</b> for another family, OS or tenancy. Can't be sold",
+     "Commit, but the family may change"
+    ],
+    [
+     "<b>Spot</b>",
+     "up to 90%",
+     "Can be taken back with a <b>2-minute warning</b>",
+     "Fault-tolerant, flexible jobs"
+    ],
+    [
+     "<b>Dedicated Host</b>",
+     "none",
+     "A whole physical server you can see (sockets, cores)",
+     "BYOL per socket/core, compliance"
+    ],
+    [
+     "<b>Dedicated Instance</b>",
+     "none",
+     "Hardware not shared with other accounts, but no host visibility",
+     "\"single-tenant\" without licensing needs"
+    ],
+    [
+     "<b>Capacity Reservation</b>",
+     "none (combine with SP)",
+     "One AZ, no term",
+     "\"guarantee capacity\" for an event"
+    ]
+   ]
+  },
+  {
+   "type": "traps",
+   "items": [
+    "Savings Plans and RIs are <b>billing</b> discounts. Only a Capacity Reservation (or a zonal RI) guarantees capacity.",
+    "Spot Fleet or an ASG with several instance types lowers the chance of losing all Spot capacity at once."
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"can be interrupted\" + \"most cost-effective\"",
+     "Spot"
+    ],
+    [
+     "\"will move to Fargate / Lambda\" + commit",
+     "Compute Savings Plan"
+    ],
+    [
+     "\"license per socket\"",
+     "Dedicated Host"
+    ],
+    [
+     "\"guarantee capacity in an AZ\"",
+     "On-Demand Capacity Reservation"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Instances: placement, IPs, hibernate, metadata"
+  },
+  {
+   "type": "table",
+   "head": [
+    "Placement group",
+    "Where",
+    "Limit",
+    "Pick for"
+   ],
+   "rows": [
+    [
+     "<b>Cluster</b>",
+     "<b>One AZ</b>, same rack area",
+     "Low latency, 10+ Gbps between nodes",
+     "HPC, tightly coupled jobs"
+    ],
+    [
+     "<b>Spread</b>",
+     "Distinct hardware, can span AZs",
+     "<b>7 instances per AZ</b> per group",
+     "A few critical instances that must not fail together"
+    ],
+    [
+     "<b>Partition</b>",
+     "Separate racks, <b>can span AZs</b>",
+     "<b>7 partitions per AZ</b>, hundreds of instances",
+     "HDFS, Cassandra, Kafka (rack-aware)"
+    ]
+   ]
+  },
+  {
+   "type": "table",
+   "head": [
+    "Fact",
+    "Exam version"
+   ],
+   "rows": [
+    [
+     "Elastic IPs",
+     "<b>5 per region</b>, a soft limit you can raise. Charged when not attached (all public IPv4 is charged since 2024)"
+    ],
+    [
+     "Public IP",
+     "Changes on stop/start. Need a fixed one → Elastic IP"
+    ],
+    [
+     "<b>Hibernate</b>",
+     "RAM saved to the <b>encrypted root EBS</b>; boots with memory intact. RAM under 150 GB, up to 60 days"
+    ],
+    [
+     "ENI",
+     "A virtual network card you can move to another instance in the <b>same AZ</b> (failover trick)"
+    ],
+    [
+     "<b>IMDSv2</b>",
+     "Instance metadata needs a session token. Require it to block SSRF-style credential theft"
+    ],
+    [
+     "Instance families",
+     "C = compute, R/X = memory, I/D = storage IOPS, P/G = GPU, T = burstable"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"lowest latency between nodes\"",
+     "Cluster placement group"
+    ],
+    [
+     "\"Kafka / HDFS / Cassandra\" + racks",
+     "Partition placement group"
+    ],
+    [
+     "\"keep in-memory state across stop\"",
+     "Hibernate"
+    ],
+    [
+     "\"fixed public IP that survives stop\"",
+     "Elastic IP"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Golden AMI or user data?"
+  },
+  {
+   "type": "p",
+   "html": "One rule: <b>bake what's slow and the same everywhere into the AMI; pass what's small and different per environment in user data</b>. Most real answers use both."
+  },
+  {
+   "type": "table",
+   "head": [
+    "",
+    "Golden AMI",
+    "User data"
+   ],
+   "rows": [
+    [
+     "What",
+     "Image with the OS, packages and app already installed",
+     "Script that runs as root on <b>first boot</b>"
+    ],
+    [
+     "Boot time",
+     "<b>Fast</b>: nothing to install",
+     "Slow if it installs a lot"
+    ],
+    [
+     "Change it",
+     "Build a new AMI (EC2 Image Builder automates it)",
+     "Edit the script or launch template version"
+    ],
+    [
+     "Pick for",
+     "\"scale out quickly\", \"reduce boot time\"",
+     "Per-environment config, small setup steps"
+    ]
+   ]
+  },
+  {
+   "type": "traps",
+   "items": [
+    "AMIs are <b>regional</b>. Copy them to use in another region.",
+    "Need config that changes often? Have user data read it from <b>Parameter Store</b> at boot instead of baking a new AMI."
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"instances take too long to be ready\"",
+     "Golden AMI"
+    ],
+    [
+     "\"same image, different settings per environment\"",
+     "AMI + user data (or Parameter Store)"
+    ],
+    [
+     "\"automate building and patching AMIs\"",
+     "EC2 Image Builder"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Load balancers"
+  },
+  {
+   "type": "p",
+   "html": "Pick by <b>layer</b>. HTTP features (paths, hosts, headers) mean ALB. Raw TCP/UDP or a fixed IP means NLB. Third-party appliances inline means GWLB."
+  },
+  {
+   "type": "table",
+   "head": [
+    "",
+    "ALB",
+    "NLB",
+    "GWLB"
+   ],
+   "rows": [
+    [
+     "Layer",
+     "7: HTTP, HTTPS, gRPC, WebSocket",
+     "4: <b>TCP, UDP, TLS</b>",
+     "3: IP packets (GENEVE, port 6081)"
+    ],
+    [
+     "Routing",
+     "Path, host, header, query string",
+     "Port only",
+     "Sends all traffic through appliances"
+    ],
+    [
+     "Static IP",
+     "No (DNS name only; put Global Accelerator in front)",
+     "<b>Yes, one per AZ (or your Elastic IPs)</b>",
+     "No"
+    ],
+    [
+     "Targets",
+     "Instances, IPs, <b>Lambda</b>",
+     "Instances, IPs (incl. on-prem over DX/VPN), ALB",
+     "Firewall / IDS appliances"
+    ],
+    [
+     "Pick for",
+     "Web apps, microservices",
+     "Games, IoT, extreme throughput, allowlisting",
+     "Inline inspection"
+    ]
+   ]
+  },
+  {
+   "type": "traps",
+   "items": [
+    "\"UDP\" rules out ALB immediately.",
+    "Sticky sessions keep a user on one target; they don't survive that target dying. For real fault tolerance store sessions in ElastiCache or DynamoDB.",
+    "Cross-zone load balancing is on by default for ALB, off by default for NLB (and NLB charges for cross-AZ traffic when on)."
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"route /api and /images differently\"",
+     "ALB path rules"
+    ],
+    [
+     "\"UDP\" / \"static IP\" / \"millions of requests\"",
+     "NLB"
+    ],
+    [
+     "\"third-party firewall appliances\"",
+     "GWLB"
+    ],
+    [
+     "\"invoke Lambda from HTTP\" behind LB",
+     "ALB"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Auto Scaling groups"
+  },
+  {
+   "type": "table",
+   "head": [
+    "Policy",
+    "How",
+    "Pick when"
+   ],
+   "rows": [
+    [
+     "<b>Target tracking</b>",
+     "Keep a metric at a value (CPU 50%, requests per target)",
+     "Default answer, least effort"
+    ],
+    [
+     "Step / simple",
+     "Add N instances when an alarm fires",
+     "Different steps for different breach sizes"
+    ],
+    [
+     "<b>Scheduled</b>",
+     "Change capacity at set times",
+     "\"every Monday 9 AM\""
+    ],
+    [
+     "<b>Predictive</b>",
+     "ML forecast from history, scales ahead",
+     "Recurring daily or weekly patterns"
+    ]
+   ]
+  },
+  {
+   "type": "table",
+   "head": [
+    "Feature",
+    "What it does"
+   ],
+   "rows": [
+    [
+     "<b>Launch template</b>",
+     "Versions, mixed instance types, Spot + On-Demand mix. The only choice today"
+    ],
+    [
+     "Launch configuration",
+     "Old, can't be edited. New accounts can't create them (since Oct 2024)"
+    ],
+    [
+     "<b>ELB health checks</b>",
+     "Off by default. Turn on so the ASG replaces instances the LB marks unhealthy"
+    ],
+    [
+     "Lifecycle hooks",
+     "Pause on launch or terminate (Pending:Wait / Terminating:Wait) to install, drain or copy logs"
+    ],
+    [
+     "<b>Instance refresh</b>",
+     "Replace instances in batches with a new template version, keeping a minimum healthy %"
+    ],
+    [
+     "Warm pool",
+     "Pre-initialized stopped instances to cut scale-out time"
+    ],
+    [
+     "Default termination",
+     "Balance AZs first, then the instance with the oldest launch template"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"keep average CPU at 50%\"",
+     "Target tracking"
+    ],
+    [
+     "\"app returns errors but instances aren't replaced\"",
+     "Turn on ELB health checks"
+    ],
+    [
+     "\"roll out a new AMI gradually\"",
+     "Instance refresh"
+    ],
+    [
+     "\"run a script before an instance is terminated\"",
+     "Lifecycle hook"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Containers, Lambda and Batch"
+  },
+  {
+   "type": "table",
+   "head": [
+    "Need",
+    "Answer",
+    "Why / note"
+   ],
+   "rows": [
+    [
+     "Containers, no servers to manage",
+     "<b>ECS or EKS on Fargate</b>",
+     "Pay per task vCPU/memory"
+    ],
+    [
+     "Kubernetes already in use",
+     "<b>EKS</b>",
+     "ECS is AWS-only"
+    ],
+    [
+     "Container needs AWS permissions (S3, DynamoDB)",
+     "<b>ECS task role</b>",
+     "The <b>execution role</b> only pulls images and writes logs"
+    ],
+    [
+     "Pod needs AWS permissions",
+     "<b>IRSA or EKS Pod Identity</b>",
+     "Not the node role, which every pod would share"
+    ],
+    [
+     "Scale pods / scale nodes",
+     "<b>HPA</b> / <b>Cluster Autoscaler or Karpenter</b>",
+     "Two different layers"
+    ],
+    [
+     "Short event-driven code",
+     "<b>Lambda</b>",
+     "15 min max, up to 10 GB memory and 10 GB /tmp, 1,000 concurrent per region (soft)"
+    ],
+    [
+     "No cold starts",
+     "<b>Provisioned concurrency</b>",
+     "Reserved concurrency only caps or guarantees a share"
+    ],
+    [
+     "Lambda in a VPC calls the internet",
+     "<b>NAT gateway</b>",
+     "Lambda in a VPC has no public IP"
+    ],
+    [
+     "Batch jobs longer than 15 min, queued",
+     "<b>AWS Batch</b>",
+     "Runs on EC2, Spot <b>or Fargate (serverless)</b>"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"job runs 2 hours\" + serverless",
+     "AWS Batch on Fargate (or ECS on Fargate)"
+    ],
+    [
+     "\"cold start latency\"",
+     "Provisioned concurrency"
+    ],
+    [
+     "\"containers read S3\"",
+     "Task role"
+    ],
+    [
+     "\"Lambda can't reach the internet\"",
+     "NAT gateway route"
+    ]
+   ]
+  }
+ ],
+ "questions": [
+  {
+   "id": "lt-mixed",
+   "weak": "lt-lc",
+   "q": "An Auto Scaling group must run a baseline of On-Demand instances and add Spot instances across several instance types. Which setup needs the <b>least operational effort</b>?",
+   "options": [
+    {
+     "t": "A launch template with a mixed instances policy on one ASG",
+     "why": "Launch templates support several types and an On-Demand/Spot split in a single group."
+    },
+    {
+     "t": "A launch configuration listing the instance types",
+     "why": "Launch configurations allow one instance type and no Spot/On-Demand mix."
+    },
+    {
+     "t": "Two ASGs, one On-Demand and one Spot, behind the same ALB",
+     "why": "Works, but it's two groups to keep in step. More effort."
+    },
+    {
+     "t": "A Spot Fleet next to the ASG, managed by a Lambda function",
+     "why": "Custom glue for something the ASG does natively."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "lc-today",
+   "weak": "lt-lc",
+   "fix": "launch-config",
+   "q": "Which statement about EC2 launch configurations is <b>true today</b>?",
+   "options": [
+    {
+     "t": "They can be edited in place to change the AMI",
+     "why": "They're immutable. You'd create a new one."
+    },
+    {
+     "t": "Accounts created after October 2024 can't create them, and launch templates replace them",
+     "why": "AWS stopped new launch configurations; launch templates add versions and mixed instances."
+    },
+    {
+     "t": "They support versions, so an ASG can roll back",
+     "why": "Versions are a launch template feature."
+    },
+    {
+     "t": "They're required to use Spot instances in an ASG",
+     "why": "Spot mixes need a launch template."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "ami-slow-boot",
+   "weak": "ami-userdata",
+   "q": "An ASG's new instances take 15 minutes to serve traffic because user data installs packages and the app. Traffic spikes come fast. What's the <b>most effective</b> fix?",
+   "options": [
+    {
+     "t": "Bake the packages and app into a golden AMI and use it in the launch template",
+     "why": "Nothing left to install at boot, so instances are ready in a minute or two."
+    },
+    {
+     "t": "Use a larger instance type",
+     "why": "Installs a bit faster, still minutes of downloads."
+    },
+    {
+     "t": "Increase the scaling cooldown",
+     "why": "Slows scaling further."
+    },
+    {
+     "t": "Move the install script into a launch lifecycle hook",
+     "why": "Still installs at boot; the hook only holds the instance while it does."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "ami-per-env",
+   "weak": "ami-userdata",
+   "q": "Dev, test and prod run the same application. Only the database endpoint and log level differ per environment. Which approach has the <b>least operational overhead</b>?",
+   "options": [
+    {
+     "t": "One golden AMI, with user data reading per-environment values from Parameter Store at boot",
+     "why": "One image to patch; small differences come in at boot."
+    },
+    {
+     "t": "Build a separate AMI for each environment",
+     "why": "Three images to build and patch for a few settings."
+    },
+    {
+     "t": "Hard-code all three endpoints in the app and pick one by hostname",
+     "why": "Brittle, and a config change needs a redeploy."
+    },
+    {
+     "t": "Launch from a base AMI and have engineers SSH in to configure each instance",
+     "why": "Manual and doesn't scale."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "udp-static",
+   "weak": "nlb-alb",
+   "q": "A multiplayer game uses <b>UDP</b>. Players' networks allowlist the server by a <b>fixed IP</b> in each AZ. Which load balancer fits?",
+   "options": [
+    {
+     "t": "Network Load Balancer with an Elastic IP per AZ",
+     "why": "Layer 4, supports UDP, and gives a static IP per AZ."
+    },
+    {
+     "t": "Application Load Balancer",
+     "why": "HTTP/HTTPS only, and no static IP."
+    },
+    {
+     "t": "Gateway Load Balancer",
+     "why": "For inline appliances, not serving clients."
+    },
+    {
+     "t": "CloudFront in front of EC2",
+     "why": "CloudFront serves HTTP(S), not raw UDP game traffic."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "path-routing",
+   "weak": "nlb-alb",
+   "q": "One domain must send <code>/api/*</code> to containers and <code>/images/*</code> to another fleet, using the <b>fewest resources</b>.",
+   "options": [
+    {
+     "t": "One ALB with path-based listener rules to two target groups",
+     "why": "Layer-7 rules route by path on one load balancer."
+    },
+    {
+     "t": "One NLB with two listeners",
+     "why": "NLB routes by port, it can't see URL paths."
+    },
+    {
+     "t": "Two NLBs and Route 53 weighted records",
+     "why": "DNS can't route by path either, and it's more resources."
+    },
+    {
+     "t": "A Gateway Load Balancer",
+     "why": "For appliances, not HTTP routing."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "gwlb",
+   "q": "Security wants all traffic entering a VPC to pass through a fleet of <b>third-party firewall appliances</b> that scales and stays highly available. What should they use?",
+   "options": [
+    {
+     "t": "Gateway Load Balancer with the appliances as targets",
+     "why": "Built for transparent, scalable inline inspection."
+    },
+    {
+     "t": "Network Load Balancer in front of the appliances",
+     "why": "Doesn't insert itself transparently into routing like GWLB does."
+    },
+    {
+     "t": "Security groups on every instance",
+     "why": "Not deep inspection, and not a third-party appliance."
+    },
+    {
+     "t": "AWS WAF on the ALB",
+     "why": "Only HTTP rules on that ALB, not all traffic."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "partition",
+   "fix": "partition-pg",
+   "q": "A Kafka cluster of 60 brokers must survive a rack failure, stay rack-aware, and use <b>three AZs</b>. Which placement fits?",
+   "options": [
+    {
+     "t": "One partition placement group spread over the three AZs",
+     "why": "Partition groups span AZs, up to 7 partitions per AZ, and expose the partition to the app."
+    },
+    {
+     "t": "A cluster placement group",
+     "why": "One AZ and shared hardware: one failure can hit many brokers."
+    },
+    {
+     "t": "A spread placement group",
+     "why": "Max 7 instances per AZ, far too few for 60."
+    },
+    {
+     "t": "Three partition groups, one per AZ, since partitions can't span AZs",
+     "why": "They can span AZs, so this adds groups for nothing."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "cluster-pg",
+   "q": "An HPC job needs the <b>lowest network latency and highest throughput</b> between 20 nodes. Fault tolerance isn't a concern.",
+   "options": [
+    {
+     "t": "Cluster placement group in one AZ",
+     "why": "Packs nodes close together for low latency."
+    },
+    {
+     "t": "Spread placement group",
+     "why": "Puts instances on separate hardware, the opposite goal."
+    },
+    {
+     "t": "Partition placement group across AZs",
+     "why": "Cross-AZ adds latency."
+    },
+    {
+     "t": "Instances in three AZs behind an NLB",
+     "why": "Spreads nodes apart."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "eip-limit",
+   "fix": "eip-region",
+   "q": "An account has 5 Elastic IPs in us-east-1 and none in eu-west-1. It needs 3 more in <b>us-east-1</b>. What's true?",
+   "options": [
+    {
+     "t": "Request a quota increase for us-east-1; the limit is 5 per region and can be raised",
+     "why": "It's a soft limit per region."
+    },
+    {
+     "t": "The account is out of Elastic IPs in every region",
+     "why": "The limit is per region, not per account."
+    },
+    {
+     "t": "5 is a hard limit, so use auto-assigned public IPs",
+     "why": "It can be raised, and auto-assigned IPs change on stop/start."
+    },
+    {
+     "t": "Allocate them in eu-west-1 and attach them to us-east-1 instances",
+     "why": "Elastic IPs are regional."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "spot-batch",
+   "q": "A nightly image-processing job can be stopped and resumed at any point and has no deadline. What's the <b>most cost-effective</b> option?",
+   "options": [
+    {
+     "t": "Spot Instances",
+     "why": "Up to 90% off, and interruptions don't matter here."
+    },
+    {
+     "t": "Standard Reserved Instances",
+     "why": "Pays for capacity 24/7 for a job that runs nightly."
+    },
+    {
+     "t": "On-Demand Instances",
+     "why": "Works, but costs more than Spot."
+    },
+    {
+     "t": "Dedicated Hosts",
+     "why": "Most expensive, for licensing or compliance."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "convertible",
+   "fix": "convertible-ri",
+   "q": "Which statement about <b>Convertible Reserved Instances</b> is correct?",
+   "options": [
+    {
+     "t": "Up to about 66% off, and they can be exchanged for another family, OS or tenancy",
+     "why": "That's the trade: less discount than Standard, more flexibility."
+    },
+    {
+     "t": "About 54% off and locked to one instance family",
+     "why": "The discount is up to ~66%, and the family can be exchanged."
+    },
+    {
+     "t": "They can be sold on the RI Marketplace",
+     "why": "Only Standard RIs can be sold."
+    },
+    {
+     "t": "They also cover Fargate and Lambda",
+     "why": "Only a Compute Savings Plan does."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "compute-sp",
+   "q": "A company will run steady EC2 for 3 years but plans to move part of it to <b>Fargate and Lambda</b>. Which commitment gives savings with the <b>most flexibility</b>?",
+   "options": [
+    {
+     "t": "Compute Savings Plan",
+     "why": "Applies across EC2 families, regions, Fargate and Lambda."
+    },
+    {
+     "t": "EC2 Instance Savings Plan",
+     "why": "One family in one region, and no Fargate or Lambda."
+    },
+    {
+     "t": "Standard Reserved Instances",
+     "why": "Locked to instance attributes."
+    },
+    {
+     "t": "Convertible Reserved Instances",
+     "why": "EC2 only, and exchanges need effort."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "dedicated-host",
+   "q": "Licensed software is billed <b>per physical socket</b>, and the company wants to bring its own licenses. Which option is required?",
+   "options": [
+    {
+     "t": "Dedicated Hosts",
+     "why": "You see the sockets and cores, so licenses can be counted."
+    },
+    {
+     "t": "Dedicated Instances",
+     "why": "Single-tenant, but no visibility of sockets."
+    },
+    {
+     "t": "Spot Instances",
+     "why": "Shared hardware and interruptions."
+    },
+    {
+     "t": "A cluster placement group",
+     "why": "Placement, not licensing."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "hibernate",
+   "q": "An app spends 20 minutes loading a large in-memory cache at start. It's stopped every night and must resume <b>quickly</b> in the morning.",
+   "options": [
+    {
+     "t": "Enable hibernation on the instance (encrypted root EBS)",
+     "why": "RAM is saved to EBS and restored, so the cache is warm."
+    },
+    {
+     "t": "Stop and start normally",
+     "why": "RAM is lost; the 20-minute warm-up repeats."
+    },
+    {
+     "t": "Store the cache on instance store",
+     "why": "Instance store is wiped on stop."
+    },
+    {
+     "t": "Bake the cache into the AMI",
+     "why": "The cache is built at runtime and changes; an AMI is static."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "batch-fargate",
+   "fix": "batch-fargate",
+   "q": "Containerized jobs run nightly for about 2 hours each, from a queue. The team wants <b>no servers to manage</b>.",
+   "options": [
+    {
+     "t": "AWS Batch with a Fargate compute environment",
+     "why": "Batch queues and runs the jobs; Fargate removes servers."
+    },
+    {
+     "t": "Lambda functions triggered by EventBridge",
+     "why": "15-minute limit."
+    },
+    {
+     "t": "AWS Batch is EC2-only, so run ECS on Fargate with a custom scheduler",
+     "why": "Batch supports Fargate, so no custom scheduler is needed."
+    },
+    {
+     "t": "EC2 Spot instances with cron",
+     "why": "Servers to manage."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "lambda-nat",
+   "q": "A Lambda function attached to <b>private subnets</b> must call a public third-party API. It currently times out. What fixes it?",
+   "options": [
+    {
+     "t": "Route the private subnets to a NAT gateway in a public subnet",
+     "why": "Lambda in a VPC has no public IP; NAT gives it outbound internet."
+    },
+    {
+     "t": "Attach an internet gateway to the Lambda function",
+     "why": "IGWs attach to VPCs, and Lambda ENIs get no public IP."
+    },
+    {
+     "t": "Create a VPC interface endpoint for the API",
+     "why": "Endpoints are for AWS or PrivateLink services, not any public API."
+    },
+    {
+     "t": "Increase the function timeout",
+     "why": "It will still have no route out."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "cold-start",
+   "q": "A latency-sensitive API on Lambda shows slow first requests after quiet periods. Which fixes it with the <b>least code change</b>?",
+   "options": [
+    {
+     "t": "Provisioned concurrency",
+     "why": "Keeps initialized environments ready, so no cold start."
+    },
+    {
+     "t": "Reserved concurrency",
+     "why": "Caps or guarantees concurrency; doesn't pre-warm."
+    },
+    {
+     "t": "Move the function into a VPC",
+     "why": "Doesn't remove cold starts."
+    },
+    {
+     "t": "Raise the timeout",
+     "why": "Timeout isn't the problem."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "task-role",
+   "q": "ECS tasks on Fargate must read objects from an S3 bucket. Where do the permissions go?",
+   "options": [
+    {
+     "t": "The ECS task role",
+     "why": "The role the app's AWS calls use."
+    },
+    {
+     "t": "The task execution role",
+     "why": "Only for pulling images and writing logs on the task's behalf."
+    },
+    {
+     "t": "An EC2 instance profile",
+     "why": "Fargate has no instance you control, and it'd be shared by all tasks."
+    },
+    {
+     "t": "Access keys in environment variables",
+     "why": "Long-lived keys; avoid."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "elb-hc",
+   "q": "Instances in an ASG pass EC2 status checks but the app returns HTTP 500s. The ALB marks them unhealthy, yet the ASG <b>never replaces</b> them.",
+   "options": [
+    {
+     "t": "Turn on ELB health checks for the ASG",
+     "why": "By default the ASG only uses EC2 status checks."
+    },
+    {
+     "t": "Increase the health check grace period",
+     "why": "Delays checks; doesn't change which checks count."
+    },
+    {
+     "t": "Add a CloudWatch alarm to reboot instances",
+     "why": "Reboots don't replace, and it's extra glue."
+    },
+    {
+     "t": "Change the termination policy",
+     "why": "Decides which instance goes on scale-in, not health."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  }
+ ],
+ "drills": [
+  {
+   "id": "ami-or-userdata",
+   "type": "thisorthat",
+   "title": "Golden AMI or user data?",
+   "intro": "60 seconds. Where does it belong?",
+   "a": "Golden AMI",
+   "b": "User data",
+   "seconds": 60,
+   "items": [
+    {
+     "t": "Install a 2 GB app runtime",
+     "ans": "a"
+    },
+    {
+     "t": "Set the environment name",
+     "ans": "b"
+    },
+    {
+     "t": "Cut boot time to under a minute",
+     "ans": "a"
+    },
+    {
+     "t": "Read a DB endpoint from Parameter Store",
+     "ans": "b"
+    },
+    {
+     "t": "OS patches and hardening",
+     "ans": "a"
+    },
+    {
+     "t": "Register with a config server at boot",
+     "ans": "b"
+    },
+    {
+     "t": "Same in every environment, slow to install",
+     "ans": "a"
+    },
+    {
+     "t": "Tiny setting that changes weekly",
+     "ans": "b"
+    }
+   ]
+  },
+  {
+   "id": "buy-match",
+   "type": "match",
+   "title": "Match the purchase option",
+   "intro": "Tap an option, then its trigger.",
+   "pairs": [
+    [
+     "Spot",
+     "Can be interrupted, cheapest"
+    ],
+    [
+     "Compute Savings Plan",
+     "Commit, but EC2 + Fargate + Lambda"
+    ],
+    [
+     "Standard RI",
+     "Max discount, nothing will change"
+    ],
+    [
+     "Convertible RI",
+     "Commit, family may change (~66%)"
+    ],
+    [
+     "Dedicated Host",
+     "Licenses per socket"
+    ],
+    [
+     "Capacity Reservation",
+     "Guarantee capacity in one AZ"
+    ],
+    [
+     "On-Demand",
+     "Short, unknown, spiky"
+    ]
+   ]
+  },
+  {
+   "id": "lb-buckets",
+   "type": "buckets",
+   "title": "ALB, NLB or GWLB?",
+   "intro": "Tap a scenario, then the load balancer.",
+   "buckets": [
+    "ALB",
+    "NLB",
+    "GWLB"
+   ],
+   "items": [
+    {
+     "t": "Route by URL path",
+     "b": 0
+    },
+    {
+     "t": "UDP game traffic",
+     "b": 1
+    },
+    {
+     "t": "Third-party firewall inline",
+     "b": 2
+    },
+    {
+     "t": "Lambda as a target",
+     "b": 0
+    },
+    {
+     "t": "Static IP per AZ",
+     "b": 1
+    },
+    {
+     "t": "Host-based routing",
+     "b": 0
+    },
+    {
+     "t": "GENEVE on port 6081",
+     "b": 2
+    },
+    {
+     "t": "Millions of TCP connections",
+     "b": 1
+    }
+   ]
+  },
+  {
+   "id": "compute-keywords",
+   "type": "keyword",
+   "title": "Spot the keyword",
+   "intro": "Tap the phrase that decides the answer.",
+   "items": [
+    {
+     "parts": [
+      "A rendering job",
+      "runs on 200 instances,",
+      "can restart from checkpoints,",
+      "and must cost as little as possible."
+     ],
+     "key": 2,
+     "answer": "Spot Instances",
+     "why": "Interruptible work is the Spot tell."
+    },
+    {
+     "parts": [
+      "A team runs Cassandra",
+      "on 40 instances",
+      "and needs rack-aware placement",
+      "across AZs."
+     ],
+     "key": 2,
+     "answer": "Partition placement group",
+     "why": "Rack-aware = partitions; they can span AZs."
+    },
+    {
+     "parts": [
+      "New instances",
+      "take 12 minutes",
+      "to install the app",
+      "before serving traffic."
+     ],
+     "key": 2,
+     "answer": "Golden AMI",
+     "why": "Installs at boot are the slow part; bake them in."
+    },
+    {
+     "parts": [
+      "An IoT backend",
+      "receives UDP packets",
+      "from devices that",
+      "allowlist one IP."
+     ],
+     "key": 1,
+     "answer": "NLB",
+     "why": "UDP rules out ALB."
+    }
+   ]
+  }
+ ]
+}

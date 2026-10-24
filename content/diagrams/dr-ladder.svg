@@ -1,0 +1,33 @@
+<svg viewBox="0 0 720 300" role="img" aria-label="Four disaster recovery strategies from cheapest and slowest to most expensive and fastest. Backup and restore: nothing runs in the DR region, RTO and RPO in hours. Pilot light: data is replicated and the database runs, servers are off, RTO tens of minutes. Warm standby: a small full copy runs and scales up on failover, RTO minutes. Multi-site active-active: full production in both regions, RTO and RPO near zero." xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="dr-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="dg-head"/></marker>
+  </defs>
+  <rect x="10" y="40" width="160" height="150" rx="8" class="dg-box"/>
+  <text x="90" y="66" text-anchor="middle" class="dg-t">Backup &amp; restore</text>
+  <text x="90" y="92" text-anchor="middle" class="dg-s">nothing running</text>
+  <text x="90" y="110" text-anchor="middle" class="dg-s">restore from backups</text>
+  <text x="90" y="150" text-anchor="middle" class="dg-t">RTO hours</text>
+  <text x="90" y="170" text-anchor="middle" class="dg-s">RPO hours</text>
+  <rect x="190" y="40" width="160" height="150" rx="8" class="dg-box"/>
+  <text x="270" y="66" text-anchor="middle" class="dg-t">Pilot light</text>
+  <text x="270" y="92" text-anchor="middle" class="dg-s">data replicated, DB on</text>
+  <text x="270" y="110" text-anchor="middle" class="dg-s">servers off (AMIs ready)</text>
+  <text x="270" y="150" text-anchor="middle" class="dg-t">RTO 10s of min</text>
+  <text x="270" y="170" text-anchor="middle" class="dg-s">RPO minutes</text>
+  <rect x="370" y="40" width="160" height="150" rx="8" class="dg-acc2"/>
+  <text x="450" y="66" text-anchor="middle" class="dg-t">Warm standby</text>
+  <text x="450" y="92" text-anchor="middle" class="dg-s">full stack, small size</text>
+  <text x="450" y="110" text-anchor="middle" class="dg-s">scale up on failover</text>
+  <text x="450" y="150" text-anchor="middle" class="dg-t">RTO minutes</text>
+  <text x="450" y="170" text-anchor="middle" class="dg-s">RPO seconds</text>
+  <rect x="550" y="40" width="160" height="150" rx="8" class="dg-acc"/>
+  <text x="630" y="66" text-anchor="middle" class="dg-t">Multi-site</text>
+  <text x="630" y="92" text-anchor="middle" class="dg-s">active-active,</text>
+  <text x="630" y="110" text-anchor="middle" class="dg-s">full size in both</text>
+  <text x="630" y="150" text-anchor="middle" class="dg-t">RTO ~0</text>
+  <text x="630" y="170" text-anchor="middle" class="dg-s">RPO ~0</text>
+  <path d="M10 220H710" class="dg-l" marker-end="url(#dr-arrow)"/>
+  <text x="10" y="244" class="dg-s">cheaper, slower</text>
+  <text x="710" y="244" text-anchor="end" class="dg-s">costlier, faster</text>
+  <text x="10" y="276" class="dg-s">RTO = how long you're down. RPO = how much data (in time) you lose. Pick the cheapest one that meets both.</text>
+</svg>

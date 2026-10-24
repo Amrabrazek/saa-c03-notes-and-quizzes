@@ -1,0 +1,43 @@
+<svg viewBox="0 0 720 330" role="img" aria-label="Pick an EC2 purchase option by asking four questions in order. Can the work be interrupted? Then Spot, up to 90 percent off with a 2-minute warning. Do licenses or compliance need your own physical server? Then a Dedicated Host. Is use steady for 1 or 3 years? Then a Compute Savings Plan if you might change family, region or move to Fargate or Lambda, about 66 percent off, or an EC2 Instance Savings Plan or Standard Reserved Instance if fixed, about 72 percent off. Otherwise On-Demand, plus a Capacity Reservation to guarantee capacity in one AZ." xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="cb-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="dg-head"/></marker>
+  </defs>
+  <rect x="10" y="10" width="320" height="56" rx="8" class="dg-box"/>
+  <text x="24" y="34" class="dg-t">Can it be interrupted?</text>
+  <text x="24" y="54" class="dg-s">batch, CI, stateless workers</text>
+  <rect x="10" y="90" width="320" height="56" rx="8" class="dg-box"/>
+  <text x="24" y="114" class="dg-t">Need your own physical server?</text>
+  <text x="24" y="134" class="dg-s">per-socket / per-core licenses, compliance</text>
+  <rect x="10" y="170" width="320" height="56" rx="8" class="dg-box"/>
+  <text x="24" y="194" class="dg-t">Steady for 1 or 3 years?</text>
+  <text x="24" y="214" class="dg-s">baseline that runs all the time</text>
+  <rect x="10" y="250" width="320" height="56" rx="8" class="dg-box dg-dash" style="fill:none"/>
+  <text x="24" y="274" class="dg-t">None of these</text>
+  <text x="24" y="294" class="dg-s">short, unknown, or spiky</text>
+  <path d="M170 66V90" class="dg-l" marker-end="url(#cb-arrow)"/>
+  <path d="M170 146V170" class="dg-l" marker-end="url(#cb-arrow)"/>
+  <path d="M170 226V250" class="dg-l" marker-end="url(#cb-arrow)"/>
+  <text x="178" y="83" class="dg-s">no</text>
+  <text x="178" y="163" class="dg-s">no</text>
+  <text x="178" y="243" class="dg-s">no</text>
+  <path d="M330 38H390" class="dg-l" marker-end="url(#cb-arrow)"/>
+  <path d="M330 118H390" class="dg-l" marker-end="url(#cb-arrow)"/>
+  <path d="M330 198H390" class="dg-l" marker-end="url(#cb-arrow)"/>
+  <path d="M330 278H390" class="dg-l" marker-end="url(#cb-arrow)"/>
+  <text x="346" y="30" class="dg-s">yes</text>
+  <text x="346" y="110" class="dg-s">yes</text>
+  <text x="346" y="190" class="dg-s">yes</text>
+  <rect x="390" y="10" width="320" height="56" rx="8" class="dg-acc2"/>
+  <text x="404" y="34" class="dg-t">Spot</text>
+  <text x="404" y="54" class="dg-s">up to 90% off · 2-minute warning</text>
+  <rect x="390" y="90" width="320" height="56" rx="8" class="dg-acc2"/>
+  <text x="404" y="114" class="dg-t">Dedicated Host</text>
+  <text x="404" y="134" class="dg-s">you see sockets and cores (BYOL)</text>
+  <rect x="390" y="170" width="320" height="56" rx="8" class="dg-acc"/>
+  <text x="404" y="192" class="dg-t">Savings Plan or RI</text>
+  <text x="404" y="208" class="dg-s">may change → Compute SP (~66%)</text>
+  <text x="404" y="222" class="dg-s">fixed family + region → EC2 SP / Std RI (~72%)</text>
+  <rect x="390" y="250" width="320" height="56" rx="8" class="dg-box"/>
+  <text x="404" y="274" class="dg-t">On-Demand</text>
+  <text x="404" y="294" class="dg-s">+ Capacity Reservation to guarantee an AZ</text>
+</svg>

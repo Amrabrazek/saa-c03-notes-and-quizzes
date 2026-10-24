@@ -5,7 +5,8 @@
       "id": "compute",
       "num": 1,
       "title": "Compute & scaling",
-      "built": false
+      "built": true,
+      "file": "content/compute.json"
     },
     {
       "id": "storage",
@@ -25,7 +26,8 @@
       "id": "databases",
       "num": 4,
       "title": "Databases",
-      "built": false
+      "built": true,
+      "file": "content/databases.json"
     },
     {
       "id": "vpc",
@@ -66,7 +68,8 @@
       "id": "ops",
       "num": 10,
       "title": "Ops, cost, migration & DR",
-      "built": false
+      "built": true,
+      "file": "content/ops.json"
     }
   ]
 }
