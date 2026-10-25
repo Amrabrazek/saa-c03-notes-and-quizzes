@@ -166,6 +166,14 @@ td:first-child { font-weight: 500; }
 figure { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; overflow-x: auto; }
 figure svg { display: block; width: 100%; min-width: 560px; height: auto; font-family: var(--f-body); }
 figcaption { font-family: var(--f-mono); font-size: 12px; color: var(--muted); margin-top: 10px; }
+figure.big svg { min-width: 900px; }
+figure.big figcaption { display: flex; gap: 12px; align-items: center; justify-content: space-between; position: sticky; left: 0; }
+figure.big figcaption .btn { flex: none; font-family: var(--f-body); font-size: 13px; color: var(--ink); }
+#zoom { width: 100vw; height: 100vh; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: var(--bg); color: var(--ink); }
+#zoom::backdrop { background: var(--bg); }
+#zoom .zbar { display: flex; gap: 12px; align-items: center; justify-content: space-between; padding: calc(env(safe-area-inset-top, 0px) + 10px) 16px 10px; border-bottom: 1px solid var(--line); font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
+#zoom .zbody { overflow: auto; height: calc(100% - 56px); padding: 16px; }
+#zoom .zbody svg { display: block; width: max(1100px, 100%); height: auto; font-family: var(--f-body); background: var(--surface); border-radius: 10px; }
 .dg-box { fill: var(--surface); stroke: var(--muted); stroke-width: 1.25; }
 .dg-dash { stroke-dasharray: 5 4; }
 .dg-acc { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
@@ -331,6 +339,7 @@ a.card:hover { border-color: var(--accent); }
 <div class="wrap">
   <nav class="rail" id="rail" aria-label="Sections"></nav>
   <main id="main" tabindex="-1"></main>
+  <dialog id="zoom" aria-label="Diagram, full size"><div class="zbar"><span class="zcap"></span><button class="btn" id="zoom-close" autofocus>Close</button></div><div class="zbody"></div></dialog>
 <div id="sr" class="sr-only" aria-live="polite"></div>
 </div>
 
@@ -547,7 +556,7 @@ a.card:hover { border-color: var(--accent); }
       } else if (b.type === "p") {
         html += '<div class="prose"><p>' + b.html + '</p></div>';
       } else if (b.type === "diagram") {
-        html += '<figure>' + (data.svgs[b.src] || "") + '<figcaption>' + esc(b.caption) + '</figcaption></figure>';
+        html += '<figure' + (b.big ? ' class="big"' : '') + '>' + (data.svgs[b.src] || "") + '<figcaption><span>' + esc(b.caption) + '</span>' + (b.big ? '<button class="btn" data-zoom="' + esc(b.src) + '" data-cap="' + esc(b.caption) + '">Full size</button>' : '') + '</figcaption></figure>';
       } else if (b.type === "table") {
         html += '<div class="tbl' + (b.head.length > 3 ? " wide" : "") + '"><table><thead><tr>' + b.head.map(function (h) { return '<th scope="col">' + h + '</th>'; }).join("") + '</tr></thead><tbody>' +
           b.rows.map(function (r) { return '<tr>' + r.map(function (c) { return '<td>' + c + '</td>'; }).join("") + '</tr>'; }).join("") + '</tbody></table></div>';
@@ -564,7 +573,19 @@ a.card:hover { border-color: var(--accent); }
     html += '<div class="actions" style="margin-top:12px"><button class="btn primary" id="go-quiz">Take the ' + Math.min(20, sec.questions.length) + '-question quiz</button></div></div>';
     pane.innerHTML = html;
     document.getElementById("go-quiz").addEventListener("click", function () { ui.tab = "quiz"; renderSection(sec.id); });
+    pane.querySelectorAll("[data-zoom]").forEach(function (b) { b.addEventListener("click", function () { openZoom(b.getAttribute("data-zoom"), b.getAttribute("data-cap"), b); }); });
   }
+
+  // Big diagrams open full screen so they can be scrolled and pinch-zoomed on a phone.
+  function openZoom(src, cap, from) {
+    var d = document.getElementById("zoom");
+    if (!d.showModal) { window.open(src, "_blank"); return; }
+    d.querySelector(".zcap").textContent = cap;
+    d.querySelector(".zbody").innerHTML = data.svgs[src] || "";
+    d.onclose = function () { d.querySelector(".zbody").innerHTML = ""; from.focus(); };
+    d.showModal();
+  }
+  document.getElementById("zoom-close").addEventListener("click", function () { document.getElementById("zoom").close(); });
 
   /* ---------- drills ---------- */
   var KIND = { thisorthat: "This or that · timed", match: "Match-up", buckets: "Sort into boxes", keyword: "Spot the keyword" };

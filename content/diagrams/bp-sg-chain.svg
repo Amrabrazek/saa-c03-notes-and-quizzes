@@ -1,0 +1,54 @@
+<svg viewBox="0 0 1000 400" role="img" aria-label="Security along the request path. CloudFront with WAF filters web attacks at the edge, and Shield Standard is always on. The ALB security group allows 443 only from the CloudFront managed prefix list. The EC2 security group allows the app port only from the ALB security group. The RDS security group allows 3306 and the ElastiCache security group allows 6379 only from the EC2 security group. Security groups are stateful and attach to network interfaces. A network ACL on each subnet is stateless, can deny, and needs return ports open." xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="bs-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="dg-head"/></marker>
+  </defs>
+  <rect x="20" y="40" width="120" height="60" rx="8" class="dg-box"/>
+  <text x="80" y="75" text-anchor="middle" class="dg-t">Users</text>
+  <rect x="190" y="40" width="200" height="60" rx="8" class="dg-acc"/>
+  <text x="290" y="67" text-anchor="middle" class="dg-t">CloudFront + WAF</text>
+  <text x="290" y="85" text-anchor="middle" class="dg-s">edge · Shield Standard</text>
+  <rect x="190" y="140" width="200" height="76" rx="8" class="dg-box"/>
+  <text x="290" y="167" text-anchor="middle" class="dg-t">WAF rules:</text>
+  <text x="290" y="185" text-anchor="middle" class="dg-s">SQLi, XSS, rate limit,</text>
+  <text x="290" y="201" text-anchor="middle" class="dg-s">geo block</text>
+  <path d="M290 100V140" class="dg-l dg-dashl"/>
+  <rect x="420" y="40" width="170" height="60" rx="8" class="dg-box"/>
+  <text x="505" y="67" text-anchor="middle" class="dg-t">ALB</text>
+  <text x="505" y="85" text-anchor="middle" class="dg-s">public subnet</text>
+  <rect x="420" y="140" width="170" height="76" rx="8" class="dg-acc2"/>
+  <text x="505" y="167" text-anchor="middle" class="dg-t">SG inbound:</text>
+  <text x="505" y="185" text-anchor="middle" class="dg-s">443 from CloudFront</text>
+  <text x="505" y="201" text-anchor="middle" class="dg-s">managed prefix list</text>
+  <path d="M505 100V140" class="dg-l dg-dashl"/>
+  <rect x="620" y="40" width="150" height="60" rx="8" class="dg-box"/>
+  <text x="695" y="67" text-anchor="middle" class="dg-t">EC2 (ASG)</text>
+  <text x="695" y="85" text-anchor="middle" class="dg-s">private subnet</text>
+  <rect x="620" y="140" width="150" height="76" rx="8" class="dg-acc2"/>
+  <text x="695" y="167" text-anchor="middle" class="dg-t">SG inbound:</text>
+  <text x="695" y="185" text-anchor="middle" class="dg-s">app port from</text>
+  <text x="695" y="201" text-anchor="middle" class="dg-s">ALB SG</text>
+  <path d="M695 100V140" class="dg-l dg-dashl"/>
+  <rect x="800" y="40" width="180" height="60" rx="8" class="dg-box"/>
+  <text x="890" y="67" text-anchor="middle" class="dg-t">RDS · ElastiCache</text>
+  <text x="890" y="85" text-anchor="middle" class="dg-s">data subnet</text>
+  <rect x="800" y="140" width="180" height="76" rx="8" class="dg-acc2"/>
+  <text x="890" y="167" text-anchor="middle" class="dg-t">SG inbound:</text>
+  <text x="890" y="185" text-anchor="middle" class="dg-s">3306 / 6379 from</text>
+  <text x="890" y="201" text-anchor="middle" class="dg-s">EC2 SG</text>
+  <path d="M890 100V140" class="dg-l dg-dashl"/>
+  <path d="M140 70H190" class="dg-l" marker-end="url(#bs-arrow)"/>
+  <path d="M390 70H420" class="dg-l" marker-end="url(#bs-arrow)"/>
+  <path d="M590 70H620" class="dg-l" marker-end="url(#bs-arrow)"/>
+  <path d="M770 70H800" class="dg-l" marker-end="url(#bs-arrow)"/>
+  <text x="500" y="250" text-anchor="middle" class="dg-s">Each SG names the SG before it as its source, not an IP range. Instances can come and go; the rule still holds.</text>
+  <rect x="400" y="270" width="580" height="110" rx="12" class="dg-box" style="fill:none"/>
+  <text x="420" y="294" class="dg-t">Network ACL on every subnet</text>
+  <text x="420" y="316" class="dg-s">stateless: open the return ports (1024-65535) too</text>
+  <text x="420" y="336" class="dg-s">can DENY (block one bad IP); rules run in number order</text>
+  <text x="420" y="356" class="dg-s">default NACL allows all, so SGs do most of the work</text>
+  <rect x="20" y="270" width="360" height="110" rx="12" class="dg-box" style="fill:none"/>
+  <text x="40" y="294" class="dg-t">Security group</text>
+  <text x="40" y="316" class="dg-s">stateful: replies are allowed automatically</text>
+  <text x="40" y="336" class="dg-s">ALLOW rules only; attaches to an ENI</text>
+  <text x="40" y="356" class="dg-s">(EC2, ALB, RDS, Lambda in VPC), not a subnet</text>
+</svg>

@@ -1,0 +1,228 @@
+{
+  "id": "bigpicture",
+  "title": "Big picture",
+  "oneLiner": "How the services fit into one system: where each one lives, how a request flows through them, and where you secure and connect it. Tap a diagram to see it full size.",
+  "notes": [
+    { "type": "h2", "text": "The whole system on one page" },
+    { "type": "p", "html": "One rule: <b>global edge in front, one region behind it, a VPC across two AZs inside, managed services beside the VPC, and a second region for DR</b>. Most exam scenarios are one slice of this picture." },
+    { "type": "diagram", "src": "content/diagrams/bp-full.svg", "big": true, "caption": "The full production setup. Numbers follow one request. Orange = in-memory cache; dashed = standby or DR." },
+    { "type": "table", "head": ["Step", "What happens", "Exam hook"], "rows": [
+      ["① DNS", "Route 53 returns the CloudFront (or Global Accelerator) address", "Alias record at the zone apex, free, points at CloudFront / ALB"],
+      ["② Edge", "CloudFront serves from cache; WAF filters SQLi, XSS, bad IPs", "\"Reduce latency for static content\" → CloudFront"],
+      ["③ Origin", "Cache miss: CloudFront fetches from the ALB through the internet gateway", "Lock the ALB to CloudFront with the managed prefix list"],
+      ["④ ⑤ App", "One ALB, a node in each AZ, sends traffic to EC2 in an Auto Scaling group in private subnets", "ALB and ASG are regional; one EC2 instance lives in one AZ"],
+      ["⑥ Data", "The app reads and writes RDS (Multi-AZ) and caches hot reads in ElastiCache", "Multi-AZ = HA, not read scaling; read replicas scale reads"],
+      ["Beside", "S3, DynamoDB, SQS, KMS… are outside the VPC; reach them through VPC endpoints", "\"Private subnet to S3 without internet\" → gateway endpoint"],
+      ["DR", "Region B holds a cross-region read replica, an S3 CRR bucket and a small copy of the stack", "Route 53 failover record + promote the replica"]
+    ] },
+    { "type": "exam", "items": [
+      ["\"highly available web tier\"", "ALB + Auto Scaling group across 2+ AZs"],
+      ["\"database survives an AZ failure\"", "RDS Multi-AZ"],
+      ["\"region fails\"", "Cross-region replica + Route 53 failover"],
+      ["\"no traffic over the internet to S3\"", "Gateway endpoint"]
+    ] },
+
+    { "type": "h2", "text": "What lives where" },
+    { "type": "p", "html": "One rule: <b>if it has no region selector it's global, if it runs in your subnets it's in the VPC, and if it's a disk or an instance it's stuck in one AZ</b>. Scope tells you what fails together and what you must copy for DR." },
+    { "type": "diagram", "src": "content/diagrams/bp-scope.svg", "big": true, "caption": "Nested scopes. Orange = AZ-bound things the exam likes to trap you on." },
+    { "type": "table", "head": ["Scope", "Services", "Why it matters / do instead"], "rows": [
+      ["<b>Global</b>", "Route 53, CloudFront, Global Accelerator, IAM, Organizations, WAF on CloudFront", "Nothing to copy for DR. WAF on an ALB or API Gateway is regional, though."],
+      ["<b>Regional, outside VPC</b>", "S3, DynamoDB, Lambda, SQS, SNS, KMS, Secrets Manager, CloudWatch, API Gateway", "Multi-AZ by default. Copy to another region with CRR, Global Tables, multi-Region keys, secret replication."],
+      ["<b>Regional, in the VPC</b>", "ALB, NLB, Auto Scaling group, EFS, RDS Multi-AZ pair", "Survives one AZ only if you pick subnets in 2+ AZs."],
+      ["<b>One AZ</b>", "Subnet, EC2 instance, EBS volume, NAT gateway, single RDS instance, ENI", "Fails with its AZ. EBS moves AZ by snapshot; NAT needs one per AZ for HA (today AWS also has a regional NAT gateway mode, newer than the exam)."]
+    ] },
+    { "type": "traps", "items": [
+      "S3 bucket <b>names</b> are global, but the bucket and its data live in one region.",
+      "A subnet is in exactly one AZ. A VPC spans all AZs in its region, but never two regions.",
+      "An EBS volume can only attach to an instance in the same AZ. To move it: snapshot, then create a volume in the new AZ.",
+      "One NAT gateway is a single-AZ point of failure for the other AZ's private subnets."
+    ] },
+    { "type": "exam", "items": [
+      ["\"move an EBS volume to another AZ\"", "Snapshot → new volume in that AZ"],
+      ["\"NAT gateway is a single point of failure\"", "One NAT gateway per AZ, each AZ routes to its own"],
+      ["\"DynamoDB in several regions\"", "Global Tables"],
+      ["\"WAF for an ALB\"", "Regional web ACL on the ALB"]
+    ] },
+
+    { "type": "h2", "text": "Security along the request path" },
+    { "type": "p", "html": "One rule: <b>each layer only accepts traffic from the layer in front of it</b>. WAF at the edge, then security groups that name the previous security group as their source, and NACLs on subnets for explicit denies." },
+    { "type": "diagram", "src": "content/diagrams/bp-sg-chain.svg", "big": true, "caption": "Security group chaining. Orange = security group rules, each pointing at the layer before." },
+    { "type": "table", "head": ["Layer", "Control", "Rule", "Why"], "rows": [
+      ["Edge", "WAF on CloudFront + Shield Standard", "Managed rules, rate-based rules, geo match", "Stops web attacks before they reach your region"],
+      ["Load balancer", "ALB security group", "443 from the CloudFront managed prefix list", "Nobody can bypass CloudFront and hit the ALB directly"],
+      ["App", "EC2 security group", "App port from the <b>ALB security group</b>", "Instances scale in and out; the rule still holds"],
+      ["Data", "RDS / ElastiCache security groups", "3306 / 6379 from the <b>EC2 security group</b>", "Only the app tier can reach the data"],
+      ["Subnet", "Network ACL", "Allow and deny rules in number order", "Block one bad IP range; SGs can't deny"]
+    ] },
+    { "type": "p", "html": "Today's AWS also offers <b>CloudFront VPC origins</b>, which let the ALB sit in a private subnet with no public access at all. The exam answer is still usually the managed prefix list (or a custom header checked by the ALB)." },
+    { "type": "traps", "items": [
+      "Security groups attach to network interfaces (EC2, ALB, RDS, Lambda in a VPC), not to subnets. Subnets get NACLs.",
+      "Security groups are stateful: allow inbound and the reply is allowed. NACLs are stateless: open ephemeral ports 1024-65535 for return traffic.",
+      "Security groups have no deny rule. \"Block this IP\" → NACL deny, or WAF IP set."
+    ] },
+    { "type": "exam", "items": [
+      ["\"only the web tier can reach the database\"", "DB SG source = web tier SG"],
+      ["\"block a specific IP range\"", "NACL deny (or WAF IP set)"],
+      ["\"users must not bypass CloudFront\"", "ALB SG from CloudFront prefix list"],
+      ["\"SQL injection\"", "WAF"]
+    ] },
+
+    { "type": "h2", "text": "Everything a VPC connects to" },
+    { "type": "p", "html": "One rule: <b>internet through gateways, on-premises through VPN or Direct Connect, AWS services through endpoints, other VPCs through peering, Transit Gateway or PrivateLink</b>." },
+    { "type": "diagram", "src": "content/diagrams/bp-vpc-world.svg", "big": true, "caption": "The four directions out of a VPC. Orange = the free endpoint the exam keeps asking for." },
+    { "type": "table", "head": ["Need", "Use", "Not this, because"], "rows": [
+      ["Private instances download patches", "NAT gateway (IPv4) / egress-only IGW (IPv6)", "An internet gateway alone exposes them inbound"],
+      ["On-prem link today, encrypted", "Site-to-Site VPN", "Direct Connect takes weeks and isn't encrypted by default"],
+      ["Steady, private, high bandwidth", "Direct Connect (+ VPN on top if encryption is needed)", "VPN goes over the internet, ~1.25 Gbps per tunnel"],
+      ["Private subnet to S3 or DynamoDB", "Gateway endpoint (free)", "NAT gateway costs per GB and goes via the internet path"],
+      ["Private access to SQS, KMS, SSM…", "Interface endpoint", "Gateway endpoints only exist for S3 and DynamoDB"],
+      ["Two VPCs talk", "Peering", "Transit Gateway is overkill for two"],
+      ["Many VPCs + on-prem, transitive", "Transit Gateway", "Peering is not transitive; a full mesh doesn't scale"],
+      ["Expose one service, CIDRs overlap", "PrivateLink (NLB + interface endpoint)", "Peering and TGW need non-overlapping CIDRs"]
+    ] },
+    { "type": "exam", "items": [
+      ["\"many VPCs, hub-and-spoke\"", "Transit Gateway"],
+      ["\"overlapping CIDRs, one service\"", "PrivateLink"],
+      ["\"VPN quickly, DX later\"", "VPN now, Direct Connect when ready, VPN as backup"],
+      ["\"IPv6 outbound only\"", "Egress-only internet gateway"]
+    ] },
+
+    { "type": "h2", "text": "Copying the picture to a second region" },
+    { "type": "p", "html": "One rule: <b>global services need nothing, regional data needs a replication feature, and compute is just redeployed</b>. How much you keep running in region B is your DR strategy (backup → pilot light → warm standby → active-active)." },
+    { "type": "table", "head": ["Component", "How it reaches region B", "Note"], "rows": [
+      ["EC2 / ASG / ALB", "Redeploy with CloudFormation; copy AMIs", "No replication; it's infrastructure"],
+      ["RDS", "Cross-region read replica, promote on failover", "Aurora Global Database: under 1 s lag, ~1 min promote"],
+      ["DynamoDB", "Global Tables", "Active-active, multi-region writes"],
+      ["S3", "Cross-Region Replication (needs versioning on both)", "Existing objects need S3 Batch Replication"],
+      ["KMS", "Multi-Region keys", "Same key ID in both regions, so data decrypts there"],
+      ["Secrets Manager", "Secret replication", "Replica secrets stay in sync"],
+      ["Traffic", "Route 53 failover or Global Accelerator", "GA fails over in seconds, no DNS caching"]
+    ] },
+    { "type": "exam", "items": [
+      ["\"RPO of seconds for a relational DB across regions\"", "Aurora Global Database"],
+      ["\"replicate encrypted S3 objects across regions\"", "CRR + KMS multi-Region key"],
+      ["\"multi-region writes, NoSQL\"", "DynamoDB Global Tables"],
+      ["\"lowest cost DR, hours of RTO is fine\"", "Backup and restore"]
+    ] }
+  ],
+  "questions": [
+    { "id": "bp-ha-web", "q": "A web app runs on one EC2 instance in one AZ. It must survive the loss of an AZ with the <b>least operational overhead</b>. What should the architect do?", "options": [
+      { "t": "Put an ALB in front of an Auto Scaling group that spans two AZs", "why": "The ALB and ASG are regional; the ASG replaces instances in the healthy AZ automatically." },
+      { "t": "Take hourly EBS snapshots and restore in another AZ on failure", "why": "That's backup and restore: manual and slow, not HA." },
+      { "t": "Move the instance to a cluster placement group", "why": "Cluster placement packs instances into one AZ, the opposite of what you need." },
+      { "t": "Add a second instance in the same AZ behind Route 53", "why": "Both instances still fail with the AZ." } ], "answer": [0] },
+    { "id": "bp-alb-bypass", "q": "Users must reach the app only through CloudFront. Some users hit the public ALB directly. What is the <b>simplest</b> fix?", "options": [
+      { "t": "Allow inbound 443 on the ALB security group only from the CloudFront managed prefix list", "why": "Only CloudFront's origin-facing IPs can reach the ALB, and AWS keeps the list up to date." },
+      { "t": "Add a NACL that denies all IPs except CloudFront's", "why": "CloudFront has many changing IPs; NACLs have a small rule limit. Hard to maintain." },
+      { "t": "Move the ALB to a private subnet without any other change", "why": "CloudFront then can't reach it unless you set up VPC origins." },
+      { "t": "Enable Shield Advanced on the ALB", "why": "DDoS protection, it doesn't restrict who can connect." } ], "answer": [0] },
+    { "id": "bp-sg-db", "q": "Only the app tier, which scales from 2 to 20 instances, may connect to an RDS database. Which rule is <b>most maintainable</b>?", "options": [
+      { "t": "RDS security group: allow 3306 from the app tier's security group", "why": "SG chaining. New instances carry the app SG, so the rule covers them automatically." },
+      { "t": "RDS security group: allow 3306 from each app instance's private IP", "why": "IPs change as the ASG scales; you'd keep editing the rule." },
+      { "t": "NACL on the data subnet: allow 3306 from the app subnet CIDR", "why": "Works, but it's coarser (any host in the subnet) and stateless, so you also need return-port rules." },
+      { "t": "IAM policy that allows rds:Connect for the app role", "why": "IAM database auth controls login, not which hosts can open a network connection." } ], "answer": [0] },
+    { "id": "bp-block-ip", "q": "A security team must <b>block</b> one malicious IP range from reaching instances in a subnet. What should they use?", "options": [
+      { "t": "A network ACL deny rule on the subnet", "why": "NACLs support explicit deny, evaluated by rule number." },
+      { "t": "A security group deny rule", "why": "Security groups have allow rules only." },
+      { "t": "Remove the route to the internet gateway", "why": "That cuts off all internet traffic, not one range." },
+      { "t": "GuardDuty", "why": "GuardDuty detects threats, it doesn't block traffic." } ], "answer": [0] },
+    { "id": "bp-nacl-return", "q": "A NACL allows inbound 443 and outbound 443. Web clients connect, but responses never arrive. Why?", "options": [
+      { "t": "NACLs are stateless; outbound must also allow ephemeral ports 1024-65535 back to clients", "why": "Replies go to the client's ephemeral port, which the NACL blocks." },
+      { "t": "Security groups are stateless and need an outbound rule", "why": "Security groups are stateful; replies are allowed automatically." },
+      { "t": "The internet gateway blocks return traffic", "why": "An IGW doesn't filter traffic." },
+      { "t": "NACL rules are evaluated alphabetically", "why": "They're evaluated by rule number, lowest first." } ], "answer": [0] },
+    { "id": "bp-s3-private", "q": "Instances in a private subnet upload large files to S3 through a NAT gateway, and data transfer costs are high. What is the <b>most cost-effective</b> fix?", "options": [
+      { "t": "Add an S3 gateway endpoint and route the subnet's S3 traffic to it", "why": "Free, stays on the AWS network, and removes NAT per-GB charges for S3 traffic." },
+      { "t": "Add an S3 interface endpoint", "why": "Works, but it costs per hour and per GB. The gateway endpoint is free." },
+      { "t": "Move the instances to a public subnet", "why": "Exposes them, and it's a security regression just to save money." },
+      { "t": "Use S3 Transfer Acceleration", "why": "Speeds long-distance uploads over the internet; it costs more." } ], "answer": [0] },
+    { "id": "bp-sqs-private", "q": "A Lambda function in a private subnet with no NAT gateway must send messages to SQS. Traffic must not leave the AWS network. What should the architect add?", "options": [
+      { "t": "An interface VPC endpoint for SQS", "why": "SQS has no gateway endpoint; an interface endpoint gives it a private IP in the subnet." },
+      { "t": "A gateway VPC endpoint for SQS", "why": "Gateway endpoints exist only for S3 and DynamoDB." },
+      { "t": "An internet gateway", "why": "Private subnets can't use it directly, and it goes over the internet." },
+      { "t": "VPC peering with the SQS VPC", "why": "SQS isn't in a VPC you can peer with." } ], "answer": [0] },
+    { "id": "bp-nat-ha", "q": "Two private subnets in two AZs both route to one NAT gateway in AZ-a. What happens if AZ-a fails, and what is the fix?", "options": [
+      { "t": "AZ-b loses outbound internet; put a NAT gateway in each AZ and route each subnet to its own", "why": "A NAT gateway lives in one AZ. One per AZ removes the single point of failure." },
+      { "t": "Nothing; NAT gateways are regional and fail over automatically", "why": "A standard (zonal) NAT gateway is redundant only inside its own AZ. AWS added a regional NAT gateway mode in Nov 2025, but the exam answer is still one per AZ." },
+      { "t": "AZ-b loses outbound; add a second internet gateway", "why": "A VPC has one IGW, and the IGW isn't the problem." },
+      { "t": "Nothing; the instances fall back to the internet gateway", "why": "Private subnets have no route to the IGW." } ], "answer": [0] },
+    { "id": "bp-ebs-az", "q": "An EBS volume in us-east-1a must be attached to an instance in us-east-1b. What should the architect do?", "options": [
+      { "t": "Snapshot the volume and create a new volume from it in us-east-1b", "why": "EBS volumes are AZ-bound; snapshots live in S3 at region level." },
+      { "t": "Detach and attach it to the instance in us-east-1b", "why": "A volume can only attach in its own AZ." },
+      { "t": "Enable EBS Multi-Attach", "why": "Multi-Attach is for instances in the same AZ." },
+      { "t": "Copy the volume with DataSync", "why": "DataSync moves files between storage services, not block volumes between AZs." } ], "answer": [0] },
+    { "id": "bp-global-svc", "q": "Which <b>two</b> services are global and need no copy in a DR region?", "multi": true, "options": [
+      { "t": "IAM", "why": "Users, roles and policies are global." },
+      { "t": "Route 53", "why": "Hosted zones and health checks are global." },
+      { "t": "DynamoDB", "why": "Regional; use Global Tables for other regions." },
+      { "t": "KMS", "why": "Regional keys; use multi-Region keys to decrypt in another region." },
+      { "t": "Secrets Manager", "why": "Regional; replicate secrets to the DR region." } ], "answer": [0, 1] },
+    { "id": "bp-waf-alb", "q": "An app is served directly by an ALB (no CloudFront). The team needs SQL injection protection. Where does the WAF web ACL go?", "options": [
+      { "t": "A regional web ACL associated with the ALB", "why": "WAF attaches to ALB, API Gateway, AppSync and Cognito regionally." },
+      { "t": "A global web ACL, which only works with CloudFront", "why": "Global web ACLs are for CloudFront; the ALB uses a regional one." },
+      { "t": "A security group rule on the ALB", "why": "SGs filter by port and source, they can't inspect SQL." },
+      { "t": "Shield Standard", "why": "DDoS protection at layers 3/4, not SQL injection." } ], "answer": [0] },
+    { "id": "bp-db-read", "q": "The RDS primary is overloaded by reads, and Multi-AZ is already on. What should the architect add for <b>read scaling</b>?", "options": [
+      { "t": "Read replicas, or ElastiCache for hot reads", "why": "Replicas are readable; a cache takes repeated reads off the DB." },
+      { "t": "Point reads at the Multi-AZ standby", "why": "The classic Multi-AZ standby isn't readable; it's only for failover." },
+      { "t": "A second Multi-AZ standby", "why": "Still not readable; it adds HA, not read capacity." },
+      { "t": "A larger EBS volume", "why": "Storage size doesn't fix read CPU load." } ], "answer": [0] },
+    { "id": "bp-many-vpcs", "q": "A company has 30 VPCs and two data centers that must all reach each other. Which option has the <b>least operational overhead</b>?", "options": [
+      { "t": "Transit Gateway with VPN or Direct Connect attachments", "why": "One transitive hub instead of hundreds of peerings." },
+      { "t": "Full mesh of VPC peering", "why": "435 peerings, plus peering isn't transitive to on-prem." },
+      { "t": "PrivateLink between every VPC", "why": "PrivateLink exposes single services, not whole networks." },
+      { "t": "A VPN from each VPC to each data center", "why": "60 VPNs to manage." } ], "answer": [0] },
+    { "id": "bp-overlap", "q": "A SaaS provider must expose one API to hundreds of customer VPCs. Many customers use the same CIDR (10.0.0.0/16). What should they use?", "options": [
+      { "t": "PrivateLink: NLB in the provider VPC, interface endpoints in customer VPCs", "why": "Only the endpoint's IP is used in the customer VPC, so overlapping CIDRs don't matter." },
+      { "t": "VPC peering with each customer", "why": "Peering fails with overlapping CIDRs." },
+      { "t": "Transit Gateway", "why": "Overlapping CIDRs break routing." },
+      { "t": "Public ALB with IP allow-listing", "why": "Goes over the internet; the question implies private access." } ], "answer": [0] },
+    { "id": "bp-vpn-dx", "q": "A company needs an encrypted link to AWS <b>this week</b>, and a consistent 10 Gbps link long term. What should the architect do?", "options": [
+      { "t": "Site-to-Site VPN now; order Direct Connect and keep the VPN as backup", "why": "VPN is up in minutes; DX takes weeks. VPN over DX also adds encryption." },
+      { "t": "Direct Connect only", "why": "Weeks to provision, and not encrypted by default." },
+      { "t": "VPN only, with more tunnels", "why": "~1.25 Gbps per tunnel over the internet; not consistent." },
+      { "t": "VPC peering to the data center", "why": "Peering connects VPCs, not on-prem networks." } ], "answer": [0] },
+    { "id": "bp-ipv6-out", "q": "IPv6 instances in a private subnet must reach the internet for updates but must not accept inbound connections. What should they route through?", "options": [
+      { "t": "An egress-only internet gateway", "why": "Outbound-only for IPv6, like NAT for IPv4." },
+      { "t": "A NAT gateway", "why": "NAT gateways are for IPv4 (plus NAT64 translation), not plain IPv6 egress." },
+      { "t": "An internet gateway", "why": "IPv6 addresses are public; an IGW allows inbound too." },
+      { "t": "A gateway endpoint", "why": "Only for S3 and DynamoDB, not the internet." } ], "answer": [0] },
+    { "id": "bp-dr-db", "q": "A relational database needs an RPO of about <b>1 second</b> and RTO of about 1 minute across regions. Which option fits?", "options": [
+      { "t": "Aurora Global Database", "why": "Storage-level replication under a second; promote a secondary region in about a minute." },
+      { "t": "RDS cross-region read replica", "why": "Async; lag can be longer and promotion is slower." },
+      { "t": "Daily snapshots copied to the other region", "why": "RPO of up to a day." },
+      { "t": "RDS Multi-AZ", "why": "Protects against an AZ failure, not a region." } ], "answer": [0] },
+    { "id": "bp-dr-s3kms", "q": "S3 objects encrypted with SSE-KMS must be readable in the DR region with the same key after replication. What should the architect use?", "options": [
+      { "t": "S3 Cross-Region Replication with a KMS multi-Region key", "why": "The replica key has the same key ID and material, so objects decrypt in region B." },
+      { "t": "Same-Region Replication", "why": "Stays in one region." },
+      { "t": "Copy the KMS key to the other region manually", "why": "Single-region keys can't be exported or copied." },
+      { "t": "Switch to SSE-S3 and let AWS handle it", "why": "Loses the KMS key control the scenario requires." } ], "answer": [0] },
+    { "id": "bp-failover-fast", "q": "A TCP game server runs in two regions. Failover must happen in <b>seconds</b>, without waiting for DNS caches. What should the architect use?", "options": [
+      { "t": "Global Accelerator with endpoints in both regions", "why": "Static anycast IPs; health checks shift traffic in seconds with no DNS change." },
+      { "t": "Route 53 failover routing", "why": "Clients cache DNS until the TTL expires." },
+      { "t": "CloudFront with an origin group", "why": "CloudFront is for HTTP(S), not raw TCP game traffic." },
+      { "t": "An ALB that spans both regions", "why": "ALBs are regional; they can't span regions." } ], "answer": [0] },
+    { "id": "bp-cache-static", "q": "A global user base complains of slow image loads from an ALB in one region. Which change is <b>most cost-effective</b>?", "options": [
+      { "t": "Put CloudFront in front, with S3 or the ALB as origin", "why": "Edge caching cuts latency and origin load." },
+      { "t": "Deploy the full stack in five regions", "why": "Expensive and complex for static images." },
+      { "t": "Global Accelerator", "why": "Speeds the network path but doesn't cache; every image still hits the origin." },
+      { "t": "Bigger EC2 instances", "why": "The latency is distance, not CPU." } ], "answer": [0] }
+  ],
+  "drills": [
+    { "id": "bp-scope-sort", "type": "buckets", "title": "Global, regional or one AZ?", "intro": "Tap an item, then its scope.", "buckets": ["Global", "Regional", "One AZ"], "items": [
+      { "t": "IAM role", "b": 0 }, { "t": "CloudFront distribution", "b": 0 }, { "t": "Route 53 hosted zone", "b": 0 },
+      { "t": "S3 bucket", "b": 1 }, { "t": "Application Load Balancer", "b": 1 }, { "t": "DynamoDB table", "b": 1 }, { "t": "Auto Scaling group", "b": 1 },
+      { "t": "EBS volume", "b": 2 }, { "t": "Subnet", "b": 2 }, { "t": "NAT gateway", "b": 2 }, { "t": "EC2 instance", "b": 2 } ] },
+    { "id": "bp-sg-nacl", "type": "thisorthat", "title": "Security group or NACL?", "intro": "60 seconds. Tap the one that fits.", "a": "Security group", "b": "NACL", "seconds": 60, "items": [
+      { "t": "Stateful", "ans": "a" }, { "t": "Can deny a range", "ans": "b" }, { "t": "Attaches to an ENI", "ans": "a" }, { "t": "Attaches to a subnet", "ans": "b" },
+      { "t": "Source can be another SG", "ans": "a" }, { "t": "Rules run in number order", "ans": "b" }, { "t": "Return ports must be opened", "ans": "b" }, { "t": "All rules evaluated, allow only", "ans": "a" } ] },
+    { "id": "bp-path-match", "type": "match", "title": "Who does this step?", "intro": "Tap a service, then its job in the request path.", "pairs": [
+      ["Route 53", "Answers the DNS lookup"], ["CloudFront", "Serves cached content at the edge"], ["WAF", "Blocks SQL injection"],
+      ["ALB", "Spreads requests across AZs"], ["Auto Scaling group", "Replaces failed instances"], ["ElastiCache", "Takes hot reads off the DB"] ] },
+    { "id": "bp-connect", "type": "buckets", "title": "Which way out of the VPC?", "intro": "Tap a need, then the connection.", "buckets": ["Gateway endpoint", "Interface endpoint", "Transit Gateway", "PrivateLink service"], "items": [
+      { "t": "Private subnet to S3, free", "b": 0 }, { "t": "DynamoDB without NAT", "b": 0 },
+      { "t": "Lambda to SQS privately", "b": 1 }, { "t": "EC2 to KMS without internet", "b": 1 },
+      { "t": "50 VPCs + on-prem, transitive", "b": 2 }, { "t": "Hub for VPN and DX", "b": 2 },
+      { "t": "Share one API, CIDRs overlap", "b": 3 }, { "t": "SaaS behind an NLB to customers", "b": 3 } ] }
+  ]
+}

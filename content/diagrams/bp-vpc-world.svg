@@ -1,0 +1,68 @@
+<svg viewBox="0 0 1000 600" role="img" aria-label="Everything a VPC connects to. To the internet: an internet gateway for inbound and outbound, a NAT gateway for outbound-only IPv4, an egress-only internet gateway for outbound-only IPv6. To on-premises: Site-to-Site VPN, encrypted over the internet and up in minutes, or Direct Connect, a private link that takes weeks and is not encrypted by default; both land on a virtual private gateway for one VPC, a Transit Gateway for many, or a Direct Connect gateway for many regions. To AWS services privately: a gateway endpoint for S3 and DynamoDB, free, added to route tables, or an interface endpoint for almost everything else, an ENI that costs per hour. To other VPCs: peering, one to one and not transitive; Transit Gateway, a transitive hub; PrivateLink, one service exposed behind an NLB, and overlapping CIDRs are fine." xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="bv-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="dg-head"/></marker>
+  </defs>
+  <rect x="390" y="230" width="220" height="120" rx="8" class="dg-acc"/>
+  <text x="500" y="279" text-anchor="middle" class="dg-t">Your VPC</text>
+  <text x="500" y="297" text-anchor="middle" class="dg-s">one region</text>
+  <text x="500" y="313" text-anchor="middle" class="dg-s">subnets in each AZ</text>
+  <rect x="220" y="14" width="560" height="150" rx="12" class="dg-box" style="fill:none"/>
+  <text x="234" y="36" class="dg-t">INTERNET</text>
+  <rect x="236" y="52" width="170" height="96" rx="8" class="dg-box"/>
+  <text x="321" y="89" text-anchor="middle" class="dg-t">Internet gateway</text>
+  <text x="321" y="107" text-anchor="middle" class="dg-s">in + out</text>
+  <text x="321" y="123" text-anchor="middle" class="dg-s">public subnets</text>
+  <rect x="416" y="52" width="170" height="96" rx="8" class="dg-box"/>
+  <text x="501" y="89" text-anchor="middle" class="dg-t">NAT gateway</text>
+  <text x="501" y="107" text-anchor="middle" class="dg-s">out only · IPv4</text>
+  <text x="501" y="123" text-anchor="middle" class="dg-s">one per AZ for HA</text>
+  <rect x="596" y="52" width="168" height="96" rx="8" class="dg-box"/>
+  <text x="680" y="97" text-anchor="middle" class="dg-t">Egress-only IGW</text>
+  <text x="680" y="115" text-anchor="middle" class="dg-s">out only · IPv6</text>
+  <path d="M500 164V230" class="dg-l" marker-end="url(#bv-arrow)" marker-start="url(#bv-arrow)"/>
+  <rect x="10" y="190" width="330" height="210" rx="12" class="dg-box" style="fill:none"/>
+  <text x="24" y="212" class="dg-t">ON-PREMISES</text>
+  <rect x="24" y="224" width="145" height="94" rx="8" class="dg-box"/>
+  <text x="96.5" y="260" text-anchor="middle" class="dg-t">Site-to-Site VPN</text>
+  <text x="96.5" y="278" text-anchor="middle" class="dg-s">IPsec, encrypted</text>
+  <text x="96.5" y="294" text-anchor="middle" class="dg-s">minutes · ~1.25 Gbps</text>
+  <rect x="181" y="224" width="145" height="94" rx="8" class="dg-box"/>
+  <text x="253.5" y="260" text-anchor="middle" class="dg-t">Direct Connect</text>
+  <text x="253.5" y="278" text-anchor="middle" class="dg-s">private, consistent</text>
+  <text x="253.5" y="294" text-anchor="middle" class="dg-s">weeks · not encrypted</text>
+  <text x="24" y="340" class="dg-s">Lands on:</text>
+  <text x="24" y="358" class="dg-s">VGW = one VPC</text>
+  <text x="24" y="376" class="dg-s">Transit Gateway = many VPCs</text>
+  <text x="24" y="394" class="dg-s">DX Gateway = VPCs in many regions</text>
+  <path d="M340 290H390" class="dg-l" marker-end="url(#bv-arrow)" marker-start="url(#bv-arrow)"/>
+  <rect x="660" y="190" width="330" height="210" rx="12" class="dg-box" style="fill:none"/>
+  <text x="674" y="212" class="dg-t">AWS SERVICES, PRIVATELY</text>
+  <rect x="674" y="224" width="145" height="160" rx="8" class="dg-acc2"/>
+  <text x="746.5" y="256" text-anchor="middle" class="dg-t">Gateway</text>
+  <text x="746.5" y="274" text-anchor="middle" class="dg-s">endpoint</text>
+  <text x="746.5" y="300" text-anchor="middle" class="dg-s">S3, DynamoDB</text>
+  <text x="746.5" y="318" text-anchor="middle" class="dg-s">route table entry</text>
+  <text x="746.5" y="336" text-anchor="middle" class="dg-s">free</text>
+  <rect x="831" y="224" width="145" height="160" rx="8" class="dg-box"/>
+  <text x="903.5" y="256" text-anchor="middle" class="dg-t">Interface</text>
+  <text x="903.5" y="274" text-anchor="middle" class="dg-s">endpoint</text>
+  <text x="903.5" y="300" text-anchor="middle" class="dg-s">SQS, KMS, SSM…</text>
+  <text x="903.5" y="318" text-anchor="middle" class="dg-s">ENI + private IP</text>
+  <text x="903.5" y="336" text-anchor="middle" class="dg-s">paid · PrivateLink</text>
+  <path d="M610 290H660" class="dg-l" marker-end="url(#bv-arrow)" marker-start="url(#bv-arrow)"/>
+  <rect x="160" y="420" width="680" height="170" rx="12" class="dg-box" style="fill:none"/>
+  <text x="174" y="442" class="dg-t">OTHER VPCs AND ACCOUNTS</text>
+  <rect x="176" y="456" width="205" height="118" rx="8" class="dg-box"/>
+  <text x="278.5" y="504" text-anchor="middle" class="dg-t">VPC peering</text>
+  <text x="278.5" y="522" text-anchor="middle" class="dg-s">1 : 1, not transitive</text>
+  <text x="278.5" y="538" text-anchor="middle" class="dg-s">no overlapping CIDRs</text>
+  <rect x="397" y="456" width="205" height="118" rx="8" class="dg-box"/>
+  <text x="499.5" y="504" text-anchor="middle" class="dg-t">Transit Gateway</text>
+  <text x="499.5" y="522" text-anchor="middle" class="dg-s">hub for many VPCs</text>
+  <text x="499.5" y="538" text-anchor="middle" class="dg-s">+ VPN / DX · transitive</text>
+  <rect x="618" y="456" width="205" height="118" rx="8" class="dg-box"/>
+  <text x="720.5" y="504" text-anchor="middle" class="dg-t">PrivateLink</text>
+  <text x="720.5" y="522" text-anchor="middle" class="dg-s">one service via NLB</text>
+  <text x="720.5" y="538" text-anchor="middle" class="dg-s">overlapping CIDRs OK</text>
+  <path d="M500 350V420" class="dg-l" marker-end="url(#bv-arrow)" marker-start="url(#bv-arrow)"/>
+</svg>
