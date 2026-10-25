@@ -1,0 +1,1037 @@
+{
+ "id": "hybrid",
+ "title": "Hybrid connectivity",
+ "oneLiner": "<b>VPN</b> is quick, cheap and encrypted. <b>Direct Connect</b> is steady and fast but takes weeks and isn't encrypted. Land on a <b>VGW</b> for one VPC, a <b>Transit Gateway</b> for many, and a <b>DX Gateway</b> for many regions.",
+ "notes": [
+  {
+   "type": "h2",
+   "text": "VPN or Direct Connect?"
+  },
+  {
+   "type": "p",
+   "html": "Two ways in from on-premises. Pick by <b>how soon</b>, <b>how steady</b> and <b>whether it must be encrypted</b>."
+  },
+  {
+   "type": "table",
+   "head": [
+    "",
+    "Site-to-Site VPN",
+    "Direct Connect (DX)"
+   ],
+   "rows": [
+    [
+     "Path",
+     "Public internet",
+     "Private fiber through a DX location"
+    ],
+    [
+     "Set-up time",
+     "<b>Hours</b>",
+     "<b>Weeks to months</b>"
+    ],
+    [
+     "Encrypted?",
+     "<b>Yes</b> (IPsec)",
+     "<b>No</b> by default"
+    ],
+    [
+     "Bandwidth",
+     "~1.25 Gbps per tunnel, 2 tunnels per connection",
+     "Dedicated 1/10/100 Gbps, hosted 50 Mbps-25 Gbps"
+    ],
+    [
+     "Latency",
+     "Varies with the internet",
+     "<b>Consistent</b>"
+    ],
+    [
+     "Cost",
+     "Low",
+     "High (port hours + data out)"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"connect today\" / \"quickly\" / \"cheap\"",
+     "Site-to-Site VPN"
+    ],
+    [
+     "\"consistent latency\" / \"large volumes\" / \"dedicated\"",
+     "Direct Connect"
+    ],
+    [
+     "\"more than 1.25 Gbps over VPN\"",
+     "Several tunnels on a Transit Gateway with ECMP"
+    ],
+    [
+     "\"branch offices talk to each other through AWS\"",
+     "VPN CloudHub"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Where it lands: VGW vs Transit Gateway vs DX Gateway",
+   "weak": "dx"
+  },
+  {
+   "type": "p",
+   "html": "The connection has to end on something on the AWS side. The rule: <b>one VPC → VGW. Many VPCs → Transit Gateway. Many regions over DX → Direct Connect Gateway.</b>"
+  },
+  {
+   "type": "diagram",
+   "src": "content/diagrams/hybrid-landing.svg",
+   "caption": "From your router to the right AWS landing point"
+  },
+  {
+   "type": "table",
+   "head": [
+    "Piece",
+    "Side",
+    "What it is"
+   ],
+   "rows": [
+    [
+     "<b>Customer gateway</b>",
+     "On-prem",
+     "AWS's record of <b>your</b> router (its public IP)"
+    ],
+    [
+     "<b>Virtual private gateway (VGW)</b>",
+     "AWS",
+     "VPN/DX endpoint attached to <b>one VPC</b>"
+    ],
+    [
+     "<b>Transit Gateway (TGW)</b>",
+     "AWS",
+     "Regional hub for <b>many VPCs</b>, VPNs and DX"
+    ],
+    [
+     "<b>Direct Connect Gateway</b>",
+     "AWS (global)",
+     "Lets one DX reach VPCs in <b>many regions</b>"
+    ],
+    [
+     "<b>Private VIF</b>",
+     "DX",
+     "To a VGW, or to a DX Gateway"
+    ],
+    [
+     "<b>Transit VIF</b>",
+     "DX",
+     "To a DX Gateway that is associated with Transit Gateways"
+    ],
+    [
+     "<b>Public VIF</b>",
+     "DX",
+     "To AWS <b>public</b> endpoints (S3, DynamoDB public IPs) over DX"
+    ]
+   ]
+  },
+  {
+   "type": "traps",
+   "items": [
+    "<b>A DX Gateway is not a hub between VPCs.</b> VPCs attached to the same DX Gateway can't talk to each other through it. For VPC-to-VPC, use a Transit Gateway.",
+    "Many VPCs over one DX: <b>transit VIF → DX Gateway → Transit Gateway</b>. Not one private VIF per VPC.",
+    "A VGW is per VPC and per region. It can't reach a second VPC."
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"one VPC\" + VPN",
+     "Customer gateway + virtual private gateway"
+    ],
+    [
+     "\"many VPCs\" + on-prem",
+     "Transit Gateway"
+    ],
+    [
+     "DX + \"multiple regions\"",
+     "Direct Connect Gateway"
+    ],
+    [
+     "DX + \"many VPCs\" + \"transitive\"",
+     "Transit VIF → DX Gateway → TGW"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Encryption and resilience on DX"
+  },
+  {
+   "type": "p",
+   "html": "DX is private but <b>not encrypted</b>. When a question says compliance needs encryption in transit, add encryption on top."
+  },
+  {
+   "type": "table",
+   "head": [
+    "Need",
+    "Answer",
+    "Why"
+   ],
+   "rows": [
+    [
+     "Encrypt traffic on DX",
+     "<b>Site-to-Site VPN over DX</b> (public VIF or transit VIF)",
+     "IPsec on top of the private line"
+    ],
+    [
+     "Encrypt at layer 2 on fast links",
+     "<b>MACsec</b>",
+     "Dedicated 10/100 Gbps connections only"
+    ],
+    [
+     "Highest resilience",
+     "<b>2 DX connections at 2 DX locations</b>",
+     "Survives a location failure"
+    ],
+    [
+     "Resilience on a budget",
+     "<b>DX + Site-to-Site VPN backup</b>",
+     "VPN takes over if DX fails"
+    ],
+    [
+     "Need connectivity before DX is ready",
+     "<b>VPN now</b>, DX later",
+     "DX takes weeks"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"DX\" + \"encrypt\"",
+     "VPN over DX"
+    ],
+    [
+     "\"maximum resiliency\" for DX",
+     "2 connections at 2 locations"
+    ],
+    [
+     "\"cost-effective backup\" for DX",
+     "Site-to-Site VPN"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Hybrid DNS: Route 53 Resolver endpoints"
+  },
+  {
+   "type": "p",
+   "html": "Name the <b>direction of the question</b>, not the direction of the data."
+  },
+  {
+   "type": "table",
+   "head": [
+    "Who is asking?",
+    "Endpoint",
+    "Example"
+   ],
+   "rows": [
+    [
+     "On-prem asks about AWS names",
+     "<b>Inbound</b> endpoint",
+     "Data center resolves db.internal.example in a private hosted zone"
+    ],
+    [
+     "AWS asks about on-prem names",
+     "<b>Outbound</b> endpoint + forwarding rule",
+     "EC2 resolves fileserver.corp.local"
+    ],
+    [
+     "Both",
+     "Both endpoints",
+     ""
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"on-prem servers must resolve private hosted zone records\"",
+     "Inbound Resolver endpoint"
+    ],
+    [
+     "\"EC2 must resolve on-prem domain\"",
+     "Outbound endpoint + forwarding rule"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Reaching AWS services from on-prem"
+  },
+  {
+   "type": "table",
+   "head": [
+    "Need",
+    "Answer"
+   ],
+   "rows": [
+    [
+     "S3 privately over DX/VPN, private IPs",
+     "<b>Interface endpoint for S3</b> in the VPC"
+    ],
+    [
+     "S3 over DX using its public IPs",
+     "<b>Public VIF</b>"
+    ],
+    [
+     "Any AWS API privately from on-prem",
+     "<b>Interface endpoint</b> (gateway endpoints don't work from outside the VPC)"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"on-prem\" + \"S3\" + \"private IP\"",
+     "Interface endpoint for S3"
+    ],
+    [
+     "\"on-prem\" + \"S3\" + \"Direct Connect\" + \"public endpoints\"",
+     "Public VIF"
+    ]
+   ]
+  }
+ ],
+ "questions": [
+  {
+   "id": "hyb-01",
+   "weak": "dx",
+   "q": "A company with one VPC needs a connection to its data center this week. Traffic must be encrypted and costs kept low. What should they set up?",
+   "options": [
+    {
+     "t": "Direct Connect with a private VIF",
+     "why": "Takes weeks to provision and isn't encrypted."
+    },
+    {
+     "t": "Site-to-Site VPN from a customer gateway to a virtual private gateway",
+     "why": "Right. Up in hours, IPsec-encrypted, one VPC means a VGW."
+    },
+    {
+     "t": "VPC peering to the data center",
+     "why": "Peering connects VPCs, not on-premises networks."
+    },
+    {
+     "t": "A Transit Gateway with Direct Connect",
+     "why": "Overkill for one VPC, and DX still takes weeks."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "hyb-02",
+   "weak": "dx",
+   "q": "A company has 40 VPCs in one region and a data center. Every VPC must reach on-premises, and VPCs must reach each other. What should the on-premises VPN terminate on?",
+   "options": [
+    {
+     "t": "A virtual private gateway in each VPC",
+     "why": "40 VPNs, and it doesn't solve VPC-to-VPC."
+    },
+    {
+     "t": "A Transit Gateway with all 40 VPCs attached",
+     "why": "Right. One VPN to the hub, transitive routing to every VPC."
+    },
+    {
+     "t": "A Direct Connect Gateway",
+     "why": "DX Gateway works only with DX, and it doesn't route VPC-to-VPC."
+    },
+    {
+     "t": "A customer gateway in AWS",
+     "why": "The customer gateway represents the on-premises router."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "hyb-03",
+   "weak": "dx",
+   "q": "A company has one Direct Connect connection in us-east-1 and needs private access to VPCs in us-east-1, eu-west-1 and ap-southeast-2. What is the most cost-effective approach?",
+   "options": [
+    {
+     "t": "Order a Direct Connect connection in each region",
+     "why": "Expensive and slow. Not needed."
+    },
+    {
+     "t": "Use a Direct Connect Gateway associated with the VGWs in each region",
+     "why": "Right. One DX reaches VPCs in many regions through the global DX Gateway."
+    },
+    {
+     "t": "VPC peering from us-east-1 to the other regions",
+     "why": "Peering isn't transitive, so on-prem traffic can't pass through."
+    },
+    {
+     "t": "Site-to-Site VPN to each region",
+     "why": "Works, but loses DX's consistent performance. The question asks to use DX."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "hyb-04",
+   "weak": "dx",
+   "q": "A bank uses Direct Connect. A new rule says all traffic between the data center and AWS must be encrypted in transit. What is the simplest way to meet this with the existing DX?",
+   "options": [
+    {
+     "t": "DX is encrypted by default, so nothing is needed",
+     "why": "DX is private, not encrypted."
+    },
+    {
+     "t": "Run a Site-to-Site VPN over the Direct Connect connection",
+     "why": "Right. IPsec on top of the private line."
+    },
+    {
+     "t": "Enable encryption on the VGW",
+     "why": "There is no such setting."
+    },
+    {
+     "t": "Replace DX with CloudFront",
+     "why": "CloudFront is for HTTP content delivery to users."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "hyb-05",
+   "weak": "dx",
+   "q": "A company uses a transit VIF on Direct Connect. They want 20 VPCs in two regions reachable from on-premises, with VPC-to-VPC routing controlled centrally. Which design fits?",
+   "options": [
+    {
+     "t": "Transit VIF → Direct Connect Gateway → a Transit Gateway in each region",
+     "why": "Right. That's the supported path for many VPCs over DX."
+    },
+    {
+     "t": "Transit VIF directly to each VPC's VGW",
+     "why": "Transit VIFs connect to a DX Gateway associated with Transit Gateways, not VGWs."
+    },
+    {
+     "t": "Private VIF per VPC",
+     "why": "Doesn't scale and gives no VPC-to-VPC routing."
+    },
+    {
+     "t": "Direct Connect Gateway alone, which routes between the VPCs",
+     "why": "A DX Gateway doesn't route VPC-to-VPC traffic."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "hyb-06",
+   "weak": "dx",
+   "q": "Two VPCs in different regions are both associated with the same Direct Connect Gateway. Can instances in VPC A reach VPC B through it?",
+   "options": [
+    {
+     "t": "Yes, DX Gateway routes between associated VPCs",
+     "why": "It doesn't. It only connects on-prem to the VPCs."
+    },
+    {
+     "t": "No. Use a Transit Gateway (with inter-region peering) or VPC peering for VPC-to-VPC",
+     "why": "Right. DX Gateway is not a transit hub between VPCs."
+    },
+    {
+     "t": "Yes, if both use the same CIDR",
+     "why": "Overlapping CIDRs would make things worse, not better."
+    },
+    {
+     "t": "Only with a public VIF",
+     "why": "VIF type doesn't change this."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "hyb-07",
+   "q": "A company needs maximum resiliency for its Direct Connect connectivity to AWS for critical workloads. What should they do?",
+   "options": [
+    {
+     "t": "One DX connection with two VIFs",
+     "why": "Still one physical connection and one location."
+    },
+    {
+     "t": "Two DX connections terminating at two different DX locations",
+     "why": "Right. Survives the loss of a device, connection or whole location."
+    },
+    {
+     "t": "One DX connection and a NAT gateway",
+     "why": "NAT has nothing to do with on-prem connectivity."
+    },
+    {
+     "t": "Two VIFs to two regions",
+     "why": "Still a single physical path."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "hyb-08",
+   "q": "A company has a single DX connection and wants a backup path if it fails, at the lowest cost. What should they add?",
+   "options": [
+    {
+     "t": "A second DX connection at the same location",
+     "why": "Costly, and it shares the location as a failure point."
+    },
+    {
+     "t": "A Site-to-Site VPN as backup",
+     "why": "Right. Cheap, quick, and takes over if DX fails."
+    },
+    {
+     "t": "CloudFront",
+     "why": "Not a network backup path."
+    },
+    {
+     "t": "A larger DX port",
+     "why": "Same single point of failure."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "hyb-09",
+   "q": "A Site-to-Site VPN to a Transit Gateway keeps hitting about 1.25 Gbps. The company needs more throughput over VPN. What should they do?",
+   "options": [
+    {
+     "t": "Increase the VPN tunnel size in the console",
+     "why": "There's no such setting. A tunnel tops out around 1.25 Gbps."
+    },
+    {
+     "t": "Create several VPN connections to the Transit Gateway and enable ECMP",
+     "why": "Right. Equal-cost multipath spreads traffic over many tunnels."
+    },
+    {
+     "t": "Switch the VPN to a VGW",
+     "why": "VGWs don't support ECMP across VPN connections the way TGW does."
+    },
+    {
+     "t": "Use a NAT gateway",
+     "why": "Unrelated to VPN bandwidth."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "hyb-10",
+   "q": "A company signed a Direct Connect order but the circuit needs eight weeks. The migration starts next week and needs private, encrypted connectivity now. What should they do?",
+   "options": [
+    {
+     "t": "Wait for Direct Connect",
+     "why": "The migration can't wait."
+    },
+    {
+     "t": "Set up a Site-to-Site VPN now, then move to DX when it is ready (keeping VPN as backup)",
+     "why": "Right. VPN is up in hours."
+    },
+    {
+     "t": "Use VPC peering with the data center",
+     "why": "Peering is VPC-to-VPC only."
+    },
+    {
+     "t": "Use S3 Transfer Acceleration",
+     "why": "That's for S3 uploads over the internet, not network connectivity."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "hyb-11",
+   "q": "On-premises DNS servers must resolve records in a Route 53 private hosted zone associated with a VPC. What should be configured?",
+   "options": [
+    {
+     "t": "A Route 53 Resolver inbound endpoint",
+     "why": "Right. On-prem forwards queries into the VPC through it."
+    },
+    {
+     "t": "A Route 53 Resolver outbound endpoint",
+     "why": "Outbound is for AWS resolving on-prem names."
+    },
+    {
+     "t": "Make the hosted zone public",
+     "why": "Exposes internal names to the internet."
+    },
+    {
+     "t": "A NAT gateway",
+     "why": "Unrelated to DNS resolution."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "hyb-12",
+   "q": "EC2 instances must resolve hostnames in the corp.local domain hosted on on-premises DNS servers. What should be configured?",
+   "options": [
+    {
+     "t": "An inbound endpoint",
+     "why": "Inbound is for on-prem asking about AWS names."
+    },
+    {
+     "t": "An outbound endpoint with a forwarding rule for corp.local",
+     "why": "Right. AWS forwards those queries to the on-prem DNS servers."
+    },
+    {
+     "t": "A private hosted zone named corp.local",
+     "why": "That would shadow the on-prem domain instead of asking it."
+    },
+    {
+     "t": "DHCP option set pointing to 8.8.8.8",
+     "why": "A public resolver can't see corp.local."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "hyb-13",
+   "q": "Branch offices in four cities each have a VPN to AWS. They now need to communicate with each other through AWS using the existing VPNs. What feature fits?",
+   "options": [
+    {
+     "t": "VPN CloudHub",
+     "why": "Right. Hub-and-spoke between branches over a VGW."
+    },
+    {
+     "t": "Direct Connect Gateway",
+     "why": "That's for DX, not VPN between branches."
+    },
+    {
+     "t": "VPC peering",
+     "why": "Branches aren't VPCs."
+    },
+    {
+     "t": "PrivateLink",
+     "why": "Exposes services, not site-to-site routing."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "hyb-14",
+   "q": "Which component represents the on-premises side of a Site-to-Site VPN in AWS?",
+   "options": [
+    {
+     "t": "Virtual private gateway",
+     "why": "That's the AWS side."
+    },
+    {
+     "t": "Customer gateway",
+     "why": "Right. AWS's record of your router's public IP."
+    },
+    {
+     "t": "Transit Gateway",
+     "why": "AWS-side hub."
+    },
+    {
+     "t": "Direct Connect Gateway",
+     "why": "AWS-side, DX only."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "hyb-15",
+   "weak": "endpoints",
+   "q": "On-premises applications must call SQS over an existing Site-to-Site VPN using private IP addresses only. What should be created in the VPC?",
+   "options": [
+    {
+     "t": "A gateway endpoint for SQS",
+     "why": "SQS has no gateway endpoint, and gateway endpoints can't be reached from on-prem anyway."
+    },
+    {
+     "t": "An interface endpoint for SQS",
+     "why": "Right. Private IPs in the subnet, reachable over VPN/DX."
+    },
+    {
+     "t": "A NAT gateway",
+     "why": "On-prem traffic doesn't use the VPC's NAT to reach AWS APIs."
+    },
+    {
+     "t": "A public VIF",
+     "why": "A VIF is for DX, and this is a VPN."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "hyb-16",
+   "q": "A company needs consistent, low-latency, high-throughput connectivity for nightly 20 TB transfers between its data center and AWS. What should they choose?",
+   "options": [
+    {
+     "t": "Site-to-Site VPN",
+     "why": "Internet-based, so latency and throughput vary."
+    },
+    {
+     "t": "Direct Connect",
+     "why": "Right. Dedicated bandwidth and consistent latency."
+    },
+    {
+     "t": "Snowball every night",
+     "why": "Snowball is for one-off offline transfers, not nightly jobs."
+    },
+    {
+     "t": "S3 Transfer Acceleration",
+     "why": "Still the public internet."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "hyb-17",
+   "weak": "dx",
+   "q": "Which TWO statements about Direct Connect are true?",
+   "multi": true,
+   "options": [
+    {
+     "t": "Traffic is encrypted by default",
+     "why": "DX is private, not encrypted."
+    },
+    {
+     "t": "It can take weeks to provision",
+     "why": "Right."
+    },
+    {
+     "t": "A public VIF reaches AWS public services such as S3",
+     "why": "Right."
+    },
+    {
+     "t": "It is set up in minutes from the console",
+     "why": "The physical cross-connect takes weeks."
+    },
+    {
+     "t": "A Direct Connect Gateway routes traffic between VPCs",
+     "why": "It doesn't route VPC-to-VPC."
+    }
+   ],
+   "answer": [
+    1,
+    2
+   ]
+  },
+  {
+   "id": "hyb-18",
+   "weak": "dx",
+   "q": "A company uses a single VPC and Direct Connect. They now add a second VPC in the same region. What is the simplest way to reach both VPCs over the same DX connection?",
+   "options": [
+    {
+     "t": "A Direct Connect Gateway with a private VIF, associated with both VPCs' VGWs",
+     "why": "Right. One private VIF to the DX Gateway reaches several VGWs."
+    },
+    {
+     "t": "Peer the second VPC to the first",
+     "why": "On-prem traffic can't pass through a peering (not transitive)."
+    },
+    {
+     "t": "A NAT gateway in the first VPC",
+     "why": "Unrelated."
+    },
+    {
+     "t": "A second customer gateway",
+     "why": "That's for VPN, and doesn't help DX reach another VPC."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "hyb-19",
+   "q": "Which encryption option runs at layer 2 on dedicated 10 or 100 Gbps Direct Connect links?",
+   "options": [
+    {
+     "t": "IPsec",
+     "why": "IPsec is layer 3, used by VPN over DX."
+    },
+    {
+     "t": "MACsec",
+     "why": "Right. Layer 2 encryption on supported dedicated connections."
+    },
+    {
+     "t": "TLS",
+     "why": "Application layer, inside each connection, not the link."
+    },
+    {
+     "t": "KMS",
+     "why": "KMS manages keys for data at rest."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "hyb-20",
+   "q": "An on-premises app must reach an internal ALB in a VPC that is connected through a Transit Gateway, and the app also needs to resolve the ALB's private DNS name. What TWO things are needed?",
+   "multi": true,
+   "options": [
+    {
+     "t": "A route from on-prem to the VPC CIDR through the TGW attachment",
+     "why": "Right. Traffic needs a path."
+    },
+    {
+     "t": "A Route 53 Resolver inbound endpoint",
+     "why": "Right. On-prem DNS forwards the query into the VPC."
+    },
+    {
+     "t": "A public VIF",
+     "why": "The ALB is internal."
+    },
+    {
+     "t": "A gateway VPC endpoint",
+     "why": "Unrelated to ALBs."
+    },
+    {
+     "t": "CloudFront",
+     "why": "Not needed for internal access."
+    }
+   ],
+   "answer": [
+    0,
+    1
+   ]
+  }
+ ],
+ "drills": [
+  {
+   "id": "vpn-or-dx",
+   "type": "thisorthat",
+   "title": "VPN or Direct Connect?",
+   "intro": "60 seconds. Tap the option the line describes.",
+   "a": "Site-to-Site VPN",
+   "b": "Direct Connect",
+   "seconds": 60,
+   "items": [
+    {
+     "t": "Up and running in hours",
+     "ans": "a"
+    },
+    {
+     "t": "Consistent latency",
+     "ans": "b"
+    },
+    {
+     "t": "Encrypted by default",
+     "ans": "a"
+    },
+    {
+     "t": "Takes weeks to provision",
+     "ans": "b"
+    },
+    {
+     "t": "Uses the public internet",
+     "ans": "a"
+    },
+    {
+     "t": "Uses VIFs",
+     "ans": "b"
+    },
+    {
+     "t": "Cheap backup for the other one",
+     "ans": "a"
+    },
+    {
+     "t": "Dedicated 10 Gbps port",
+     "ans": "b"
+    },
+    {
+     "t": "Two tunnels per connection",
+     "ans": "a"
+    },
+    {
+     "t": "Can use MACsec",
+     "ans": "b"
+    },
+    {
+     "t": "Works with a Direct Connect Gateway",
+     "ans": "b"
+    },
+    {
+     "t": "VPN CloudHub between branches",
+     "ans": "a"
+    }
+   ]
+  },
+  {
+   "id": "landing-buckets",
+   "type": "buckets",
+   "title": "Where does it land?",
+   "intro": "Tap a scenario, then the AWS piece it lands on.",
+   "buckets": [
+    "Virtual private gateway",
+    "Transit Gateway",
+    "Direct Connect Gateway"
+   ],
+   "items": [
+    {
+     "t": "VPN to a single VPC",
+     "b": 0
+    },
+    {
+     "t": "VPN to 50 VPCs that also talk to each other",
+     "b": 1
+    },
+    {
+     "t": "One DX to VPCs in 3 regions",
+     "b": 2
+    },
+    {
+     "t": "Aggregate many VPN tunnels with ECMP",
+     "b": 1
+    },
+    {
+     "t": "Transit VIF connects here first",
+     "b": 2,
+     "why": "Transit VIF → DX Gateway → Transit Gateway."
+    },
+    {
+     "t": "Attached to exactly one VPC",
+     "b": 0
+    },
+    {
+     "t": "Global, used only with DX",
+     "b": 2
+    },
+    {
+     "t": "Regional hub with its own route tables",
+     "b": 1
+    }
+   ]
+  },
+  {
+   "id": "hybrid-match",
+   "type": "match",
+   "title": "Match the piece",
+   "intro": "Tap a term, then what it means.",
+   "pairs": [
+    [
+     "Customer gateway",
+     "AWS's record of your on-prem router"
+    ],
+    [
+     "Private VIF",
+     "DX to a VGW or DX Gateway"
+    ],
+    [
+     "Public VIF",
+     "DX to S3 and other public endpoints"
+    ],
+    [
+     "Transit VIF",
+     "DX to a DX Gateway linked to Transit Gateways"
+    ],
+    [
+     "Inbound Resolver endpoint",
+     "On-prem resolves AWS private names"
+    ],
+    [
+     "Outbound Resolver endpoint",
+     "AWS resolves on-prem names"
+    ],
+    [
+     "VPN over DX",
+     "Encrypt traffic on a Direct Connect link"
+    ]
+   ]
+  },
+  {
+   "id": "hybrid-keywords",
+   "type": "keyword",
+   "title": "Spot the keyword",
+   "intro": "Tap the phrase that decides the answer.",
+   "items": [
+    {
+     "parts": [
+      "A retailer uses Direct Connect",
+      "and must reach VPCs",
+      "in us-east-1, eu-west-1 and ap-south-1",
+      "from one connection."
+     ],
+     "key": 2,
+     "answer": "Direct Connect Gateway",
+     "why": "Many regions over one DX."
+    },
+    {
+     "parts": [
+      "A hospital's Direct Connect link",
+      "carries patient data",
+      "and auditors require",
+      "encryption in transit."
+     ],
+     "key": 3,
+     "answer": "VPN over DX",
+     "why": "DX alone isn't encrypted."
+    },
+    {
+     "parts": [
+      "A startup needs",
+      "its office connected to one VPC",
+      "by tomorrow,",
+      "on a small budget."
+     ],
+     "key": 2,
+     "answer": "Site-to-Site VPN",
+     "why": "DX takes weeks."
+    },
+    {
+     "parts": [
+      "EC2 instances",
+      "must look up hostnames",
+      "that live on the on-prem DNS server",
+      "over the existing VPN."
+     ],
+     "key": 0,
+     "answer": "Outbound Resolver endpoint",
+     "why": "AWS is the one asking, so it's outbound."
+    },
+    {
+     "parts": [
+      "An enterprise has 120 VPCs,",
+      "two data centers,",
+      "and needs any-to-any routing",
+      "with central control."
+     ],
+     "key": 2,
+     "answer": "Transit Gateway",
+     "why": "Transitive any-to-any routing is the TGW's job."
+    }
+   ]
+  }
+ ]
+}

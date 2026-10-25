@@ -1,0 +1,1202 @@
+{
+ "id": "databases",
+ "title": "Databases",
+ "oneLiner": "Pick by data shape, then: <b>Multi-AZ</b> survives failure, <b>read replicas</b> scale reads, <b>Aurora Global</b> covers regions. Cache with lazy loading or write-through plus TTL. DynamoDB <b>on-demand</b> is the default now.",
+ "notes": [
+  {
+   "type": "h2",
+   "text": "Pick the database"
+  },
+  {
+   "type": "p",
+   "html": "Pick by <b>data shape</b> first: tables with joins, key-value at any scale, documents, graph, time series. Then pick for HA and reads."
+  },
+  {
+   "type": "table",
+   "head": [
+    "Trigger",
+    "Answer",
+    "Why / do instead"
+   ],
+   "rows": [
+    [
+     "Relational, joins, transactions",
+     "<b>RDS</b> or <b>Aurora</b>",
+     "Aurora for more performance, 15 replicas, global"
+    ],
+    [
+     "Key-value, any scale, serverless, single-digit ms",
+     "<b>DynamoDB</b>",
+     "Not for ad-hoc joins or complex queries"
+    ],
+    [
+     "MongoDB-compatible documents",
+     "<b>DocumentDB</b>",
+     "Has <b>Global Clusters</b> for cross-region"
+    ],
+    [
+     "Relationships: social graph, fraud rings",
+     "<b>Neptune</b>",
+     "Graph queries"
+    ],
+    [
+     "Cassandra (CQL)",
+     "<b>Keyspaces</b>",
+     "Serverless Cassandra"
+    ],
+    [
+     "IoT and metrics over time",
+     "<b>Timestream</b>",
+     "Time-series"
+    ],
+    [
+     "Microsecond cache, sessions, leaderboards",
+     "<b>ElastiCache</b> (Valkey / Redis OSS / Memcached)",
+     "In front of any DB"
+    ],
+    [
+     "Analytics, SQL over TBs",
+     "<b>Redshift</b>",
+     "OLAP, not OLTP"
+    ],
+    [
+     "Tamper-evident ledger",
+     "<b>Aurora PostgreSQL</b> today",
+     "QLDB reached end of support in July 2025; older questions still say QLDB"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"graph\" / \"relationships\"",
+     "Neptune"
+    ],
+    [
+     "\"MongoDB\"",
+     "DocumentDB"
+    ],
+    [
+     "\"Cassandra\"",
+     "Keyspaces"
+    ],
+    [
+     "\"serverless key-value, millions of requests\"",
+     "DynamoDB"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "RDS: Multi-AZ, read replicas, cross-region"
+  },
+  {
+   "type": "p",
+   "html": "One rule: <b>Multi-AZ is for surviving failure, read replicas are for reads</b>. Multi-AZ copies synchronously and fails over by itself; replicas copy asynchronously and you promote them by hand."
+  },
+  {
+   "type": "diagram",
+   "src": "content/diagrams/db-ha.svg",
+   "caption": "Sync for HA, async for reads and DR"
+  },
+  {
+   "type": "table",
+   "head": [
+    "",
+    "Multi-AZ (instance)",
+    "Read replica",
+    "Cross-region replica"
+   ],
+   "rows": [
+    [
+     "Purpose",
+     "<b>High availability</b>",
+     "<b>Read scaling</b>",
+     "DR + local reads"
+    ],
+    [
+     "Replication",
+     "Synchronous",
+     "Asynchronous",
+     "Asynchronous"
+    ],
+    [
+     "Readable?",
+     "<b>No</b> (standby)",
+     "Yes",
+     "Yes"
+    ],
+    [
+     "Failover",
+     "<b>Automatic</b>, same DNS name, 1-2 min",
+     "Manual promote",
+     "Manual promote"
+    ],
+    [
+     "Region",
+     "Same region",
+     "Same region",
+     "Other region"
+    ],
+    [
+     "Cost",
+     "<b>You pay for the standby</b> (about 2× instance cost)",
+     "Each replica billed",
+     "Plus cross-region transfer"
+    ]
+   ]
+  },
+  {
+   "type": "traps",
+   "items": [
+    "A <b>Multi-AZ DB cluster</b> (newer RDS option) has two <b>readable</b> standbys. The classic Multi-AZ instance standby is not readable.",
+    "Up to 15 read replicas, and a replica can itself be Multi-AZ.",
+    "Automated backups keep up to 35 days and can replicate to another region. Longer → manual snapshots or AWS Backup."
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"minimize downtime if an AZ fails\"",
+     "Multi-AZ"
+    ],
+    [
+     "\"reporting slows the primary\"",
+     "Read replica"
+    ],
+    [
+     "\"DR in another region\" + RPO minutes",
+     "Cross-region read replica"
+    ],
+    [
+     "\"Multi-AZ\" + \"read from standby\"",
+     "Multi-AZ DB cluster (or a read replica)"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "RDS features that show up as answers"
+  },
+  {
+   "type": "table",
+   "head": [
+    "Trigger",
+    "Answer",
+    "Why / note"
+   ],
+   "rows": [
+    [
+     "Encrypt an existing unencrypted DB",
+     "<b>Snapshot → copy with encryption → restore</b>",
+     "Can't encrypt in place, and an unencrypted primary can't have an encrypted replica"
+    ],
+    [
+     "Running out of storage, no manual work",
+     "<b>Storage Auto Scaling</b>",
+     "Set a maximum; no downtime"
+    ],
+    [
+     "No DB passwords at all (MySQL, PostgreSQL, MariaDB)",
+     "<b>IAM database authentication</b>",
+     "15-minute tokens; otherwise Secrets Manager with rotation"
+    ],
+    [
+     "Lambda opens too many connections",
+     "<b>RDS Proxy</b>",
+     "Pools connections, faster failover, VPC only"
+    ],
+    [
+     "OS / DB customization (Oracle, SQL Server)",
+     "<b>RDS Custom</b>",
+     "Access to the underlying host"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"encrypt existing database\"",
+     "Snapshot → encrypted copy → restore"
+    ],
+    [
+     "\"Lambda\" + \"too many connections\"",
+     "RDS Proxy"
+    ],
+    [
+     "\"no credentials in code\" for MySQL",
+     "IAM DB authentication"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Aurora"
+  },
+  {
+   "type": "table",
+   "head": [
+    "Feature",
+    "Exam facts",
+    "Pick when"
+   ],
+   "rows": [
+    [
+     "Storage",
+     "6 copies across 3 AZs, grows by itself to 128 TiB",
+     "Durability without setup"
+    ],
+    [
+     "Replicas",
+     "Up to 15, <b>failover in about 30 s</b>; priority tier 0-15 (lowest first, then largest)",
+     "\"fastest failover\""
+    ],
+    [
+     "Endpoints",
+     "Writer, reader (load-balanced), <b>custom</b> (subset, e.g. analytics)",
+     "Send analytics to bigger replicas"
+    ],
+    [
+     "<b>Global Database</b>",
+     "1 primary + up to 5 secondary regions, lag &lt;1 s (RPO ~1 s), promote in about a minute (RTO)",
+     "\"global\" + \"aggressive RPO/RTO\""
+    ],
+    [
+     "<b>Serverless v2</b>",
+     "Scales capacity (ACUs) in seconds; Multi-AZ, replicas, Global. v1 is retired",
+     "\"unpredictable or intermittent\" + \"minimize cost\""
+    ],
+    [
+     "Cloning",
+     "Copy-on-write clone in minutes",
+     "Test against production data"
+    ],
+    [
+     "<b>I/O-Optimized</b>",
+     "Higher storage/compute price, <b>no I/O charges</b>. A billing choice, not faster",
+     "I/O-heavy, predictable cost"
+    ],
+    [
+     "Babelfish",
+     "Aurora PostgreSQL understands T-SQL",
+     "Move off SQL Server with few code changes"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"global relational\" + \"RPO 1 second\"",
+     "Aurora Global Database"
+    ],
+    [
+     "\"variable workload\" + \"pay for what you use\"",
+     "Aurora Serverless v2"
+    ],
+    [
+     "\"test on a copy of prod quickly\"",
+     "Aurora cloning"
+    ],
+    [
+     "\"I/O costs are high and unpredictable\"",
+     "Aurora I/O-Optimized"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "ElastiCache and caching strategies"
+  },
+  {
+   "type": "p",
+   "html": "There are <b>two strategies plus TTL</b>. Session storage is a <b>use case</b>, not a strategy."
+  },
+  {
+   "type": "table",
+   "head": [
+    "Strategy",
+    "How",
+    "Good",
+    "Bad"
+   ],
+   "rows": [
+    [
+     "<b>Lazy loading</b> (cache-aside)",
+     "Read cache → on miss, read DB and fill cache",
+     "Only requested data is cached; a cache failure isn't fatal",
+     "Misses are slow (3 trips); data can be stale"
+    ],
+    [
+     "<b>Write-through</b>",
+     "Every DB write also updates the cache",
+     "Cache is never stale",
+     "Every write costs twice; caches data nobody reads"
+    ],
+    [
+     "<b>TTL</b> (add to either)",
+     "Entries expire after N seconds",
+     "Caps how stale data can get",
+     "Too short = more misses"
+    ]
+   ]
+  },
+  {
+   "type": "table",
+   "head": [
+    "",
+    "Valkey / Redis OSS",
+    "Memcached"
+   ],
+   "rows": [
+    [
+     "HA",
+     "Replication, Multi-AZ failover",
+     "None"
+    ],
+    [
+     "Persistence / backup",
+     "Yes",
+     "No"
+    ],
+    [
+     "Data types",
+     "Sorted sets (leaderboards), pub/sub, geospatial",
+     "Simple key-value"
+    ],
+    [
+     "Threads",
+     "Mostly single-threaded per shard",
+     "<b>Multi-threaded</b>"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"reduce DB reads\" + only cache what's used",
+     "Lazy loading"
+    ],
+    [
+     "\"cache must always be current\"",
+     "Write-through"
+    ],
+    [
+     "\"stale data\" + keep lazy loading",
+     "Add a TTL"
+    ],
+    [
+     "\"stateless web tier\" + sessions",
+     "ElastiCache or DynamoDB as session store"
+    ],
+    [
+     "\"leaderboard\"",
+     "Redis/Valkey sorted sets"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "DynamoDB"
+  },
+  {
+   "type": "table",
+   "head": [
+    "Mode",
+    "How it bills",
+    "Pick when"
+   ],
+   "rows": [
+    [
+     "<b>On-demand</b>",
+     "Per request, scales instantly",
+     "<b>Default</b>: new, spiky or unknown traffic. About 50% cheaper since Nov 2024"
+    ],
+    [
+     "<b>Provisioned</b> (+ auto scaling)",
+     "Set RCU/WCU per second",
+     "Steady, predictable, high utilization; reserved capacity cuts more"
+    ]
+   ]
+  },
+  {
+   "type": "table",
+   "head": [
+    "Unit",
+    "Covers"
+   ],
+   "rows": [
+    [
+     "1 WCU",
+     "1 write/s up to <b>1 KB</b>"
+    ],
+    [
+     "1 RCU",
+     "1 strongly consistent read/s up to <b>4 KB</b>, or 2 eventually consistent"
+    ],
+    [
+     "Transactions",
+     "Cost 2×"
+    ],
+    [
+     "Rounding",
+     "Round item size <b>up</b> to the next 4 KB (reads) or 1 KB (writes)"
+    ]
+   ]
+  },
+  {
+   "type": "table",
+   "head": [
+    "Feature",
+    "What it does"
+   ],
+   "rows": [
+    [
+     "<b>DAX</b>",
+     "In-memory cache for DynamoDB, microseconds, same API (no app rewrite)"
+    ],
+    [
+     "<b>Global Tables</b>",
+     "Multi-region, active-active writes"
+    ],
+    [
+     "<b>Streams</b>",
+     "24 h change log → Lambda triggers. Need longer or more consumers → Kinesis Data Streams for DynamoDB"
+    ],
+    [
+     "TTL",
+     "Deletes expired items for free (sessions)"
+    ],
+    [
+     "PITR",
+     "Restore to any second in the last 35 days"
+    ],
+    [
+     "Export to S3",
+     "Uses no read capacity; query with Athena"
+    ],
+    [
+     "Item size",
+     "Max <b>400 KB</b>; bigger → store in S3, keep the key"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"unpredictable traffic\" + \"least management\"",
+     "On-demand"
+    ],
+    [
+     "\"steady traffic\" + \"lowest cost\"",
+     "Provisioned + reserved capacity"
+    ],
+    [
+     "\"microsecond reads\" + \"no code changes\"",
+     "DAX"
+    ],
+    [
+     "\"multi-region writes\"",
+     "Global Tables"
+    ]
+   ]
+  }
+ ],
+ "questions": [
+  {
+   "id": "encrypt-rds",
+   "weak": "encrypt-existing",
+   "q": "An RDS MySQL instance was created <b>unencrypted</b>. Compliance now requires encryption at rest. What works?",
+   "options": [
+    {
+     "t": "Take a snapshot, copy it with encryption using a KMS key, restore a new instance from the copy, and switch the app",
+     "why": "The only path: encryption can't be turned on in place."
+    },
+    {
+     "t": "Modify the instance and enable encryption",
+     "why": "RDS doesn't allow enabling encryption on an existing instance."
+    },
+    {
+     "t": "Create an encrypted read replica and promote it",
+     "why": "An unencrypted primary can't have an encrypted replica."
+    },
+    {
+     "t": "Enable default EBS encryption for the account",
+     "why": "Affects new EBS volumes, not RDS storage that already exists."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "encrypt-aurora",
+   "weak": "encrypt-existing",
+   "q": "A team must encrypt an existing unencrypted Aurora cluster with the <b>least data loss</b> and a short cutover. Which plan fits?",
+   "options": [
+    {
+     "t": "Snapshot the cluster, restore it as a new cluster with encryption on, then cut over in a short write freeze",
+     "why": "Restore is the encryption path; freezing writes during the switch avoids loss."
+    },
+    {
+     "t": "Turn on encryption in the cluster settings during the maintenance window",
+     "why": "Not possible for an existing cluster."
+    },
+    {
+     "t": "Add an encrypted Aurora replica to the cluster",
+     "why": "Replicas share the cluster's storage and encryption setting."
+    },
+    {
+     "t": "Encrypt the data in the application and leave storage as is",
+     "why": "Doesn't meet encryption at rest for the database, and is a big app change."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "multiaz-ha",
+   "weak": "rds-ha",
+   "q": "A production RDS PostgreSQL database must keep running with <b>minimal downtime</b> if its AZ fails, with no manual steps.",
+   "options": [
+    {
+     "t": "Enable Multi-AZ",
+     "why": "Synchronous standby in another AZ with automatic failover."
+    },
+    {
+     "t": "Add a read replica in another AZ",
+     "why": "Async, and you have to promote it yourself."
+    },
+    {
+     "t": "Take hourly snapshots",
+     "why": "Restoring takes time and loses up to an hour."
+    },
+    {
+     "t": "Add a cross-region read replica",
+     "why": "For DR across regions; still a manual promote."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "replica-reads",
+   "weak": "rds-ha",
+   "q": "Monthly reports slow down an RDS MySQL primary. The fix must need the <b>least change</b> and not slow writes.",
+   "options": [
+    {
+     "t": "Create a read replica and point the reporting tool at its endpoint",
+     "why": "Offloads reads; async so writes aren't slowed."
+    },
+    {
+     "t": "Enable Multi-AZ and read from the standby",
+     "why": "A Multi-AZ instance standby isn't readable."
+    },
+    {
+     "t": "Put ElastiCache in front of the reports",
+     "why": "Ad-hoc reports rarely repeat the same query; a cache helps little."
+    },
+    {
+     "t": "Move the database to DynamoDB",
+     "why": "Huge change, and reports need SQL."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "rds-dr",
+   "weak": "rds-ha",
+   "q": "An RDS MySQL app needs disaster recovery in <b>another region</b> with an RPO of a few minutes, at the <b>lowest cost</b> without migrating engines.",
+   "options": [
+    {
+     "t": "A cross-region read replica, promoted during a disaster",
+     "why": "Async copy with minutes of lag; you only pay for one replica."
+    },
+    {
+     "t": "Enable Multi-AZ",
+     "why": "Single region only."
+    },
+    {
+     "t": "Daily snapshots copied to the other region",
+     "why": "RPO up to 24 hours."
+    },
+    {
+     "t": "Migrate to Aurora Global Database",
+     "why": "Better RPO, but a migration and a higher cost than needed."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "multiaz-cost",
+   "fix": "rds-multiaz-cost",
+   "q": "Finance asks what enabling <b>Multi-AZ</b> on an RDS instance does to the bill. What's correct?",
+   "options": [
+    {
+     "t": "You pay for the standby instance too, so instance cost roughly doubles; the sync traffic inside the region is free",
+     "why": "The standby is a full instance you pay for."
+    },
+    {
+     "t": "Nothing changes: the standby is free",
+     "why": "The standby is billed."
+    },
+    {
+     "t": "Only storage doubles, the standby compute is free",
+     "why": "Both are billed."
+    },
+    {
+     "t": "You pay only when a failover happens",
+     "why": "It's billed all the time."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "aurora-global",
+   "q": "A global trading app needs a relational database with reads in three regions, <b>RPO about 1 second</b> and <b>RTO about 1 minute</b> if the primary region fails.",
+   "options": [
+    {
+     "t": "Aurora Global Database",
+     "why": "Storage-level replication under a second, and a secondary can be promoted in about a minute."
+    },
+    {
+     "t": "RDS Multi-AZ",
+     "why": "One region."
+    },
+    {
+     "t": "RDS cross-region read replicas",
+     "why": "Async with more lag, and slower to promote."
+    },
+    {
+     "t": "DynamoDB Global Tables",
+     "why": "Not relational."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "serverless-v2",
+   "q": "An internal app's database is idle most of the day with unpredictable bursts. The team wants a relational DB that <b>minimizes cost</b> and scales without dropping connections.",
+   "options": [
+    {
+     "t": "Aurora Serverless v2",
+     "why": "Scales capacity in seconds and you pay for what you use."
+    },
+    {
+     "t": "Aurora Serverless v1",
+     "why": "Retired, and it scaled slowly with pauses."
+    },
+    {
+     "t": "A large provisioned RDS instance",
+     "why": "Paying for peak all day."
+    },
+    {
+     "t": "RDS with Storage Auto Scaling",
+     "why": "Grows storage, not compute."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "rds-proxy",
+   "q": "Hundreds of concurrent Lambda invocations exhaust connections on an RDS PostgreSQL database. What's the <b>least effort</b> fix?",
+   "options": [
+    {
+     "t": "Put RDS Proxy between Lambda and the database",
+     "why": "Pools and reuses connections."
+    },
+    {
+     "t": "Increase max_connections and the instance size",
+     "why": "Bigger bill, and the next spike breaks it again."
+    },
+    {
+     "t": "Add a read replica",
+     "why": "Doesn't help write connections, and Lambda still opens many."
+    },
+    {
+     "t": "Set Lambda reserved concurrency to 1",
+     "why": "Fixes connections by throttling the app."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "iam-db-auth",
+   "q": "A security team wants apps on EC2 to connect to RDS MySQL with <b>no stored database password at all</b>.",
+   "options": [
+    {
+     "t": "IAM database authentication with short-lived auth tokens",
+     "why": "The instance role gets a token; there's no password to store or rotate."
+    },
+    {
+     "t": "Store the password in Secrets Manager with rotation",
+     "why": "Still a password, just better managed."
+    },
+    {
+     "t": "Put the password in user data",
+     "why": "Stored in plain text in instance metadata."
+    },
+    {
+     "t": "Use a security group rule instead of a password",
+     "why": "Network control, not authentication."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "storage-scaling",
+   "q": "An RDS database keeps running out of disk space during unpredictable growth. Ops wants it handled with <b>no manual intervention</b>.",
+   "options": [
+    {
+     "t": "Enable RDS Storage Auto Scaling with a maximum size",
+     "why": "Grows storage automatically with no downtime."
+    },
+    {
+     "t": "Create a CloudWatch alarm that emails the DBA",
+     "why": "Still manual."
+    },
+    {
+     "t": "Move to Aurora Serverless v1",
+     "why": "Retired, and a migration for a storage problem."
+    },
+    {
+     "t": "Add a read replica",
+     "why": "Replicas don't add storage to the primary."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "write-through",
+   "fix": "cache-strategies",
+   "q": "A product catalog is read heavily, and users must <b>never see stale prices</b> from the cache. Which caching strategy fits?",
+   "options": [
+    {
+     "t": "Write-through: update the cache whenever the database is written",
+     "why": "The cache always matches the DB."
+    },
+    {
+     "t": "Lazy loading with no TTL",
+     "why": "Entries can stay stale until evicted."
+    },
+    {
+     "t": "Session store",
+     "why": "That's a use case, not a caching strategy."
+    },
+    {
+     "t": "Cache only on a miss, with a 24-hour TTL",
+     "why": "Up to a day of stale prices."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "ttl-lazy",
+   "fix": "cache-strategies",
+   "q": "An app uses lazy loading. Some users see data that's hours old. The team wants to keep lazy loading but <b>limit staleness</b>.",
+   "options": [
+    {
+     "t": "Add a TTL to cache entries",
+     "why": "Entries expire and are reloaded on the next miss."
+    },
+    {
+     "t": "Switch the cache to Memcached",
+     "why": "Engine choice doesn't change staleness."
+    },
+    {
+     "t": "Use session store as the strategy",
+     "why": "Not a caching strategy."
+    },
+    {
+     "t": "Add more cache nodes",
+     "why": "More capacity, same staleness."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "session-store",
+   "q": "A web tier behind an ALB must be <b>stateless</b> so any instance can fail without logging users out.",
+   "options": [
+    {
+     "t": "Store sessions in ElastiCache (or DynamoDB) with a TTL",
+     "why": "Shared, fast session data outside the instances."
+    },
+    {
+     "t": "Turn on ALB sticky sessions",
+     "why": "Sessions die with the instance."
+    },
+    {
+     "t": "Store sessions on instance store",
+     "why": "Lost if the instance fails."
+    },
+    {
+     "t": "Store sessions on each instance's EBS volume",
+     "why": "Still tied to one instance."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "ddb-new-app",
+   "fix": "ddb-ondemand",
+   "q": "A new mobile app's DynamoDB traffic is unknown and spiky. The team wants the <b>least capacity management</b> at a reasonable cost.",
+   "options": [
+    {
+     "t": "On-demand capacity mode",
+     "why": "Scales per request; AWS now recommends it by default after the 2024 price cut."
+    },
+    {
+     "t": "Provisioned mode with fixed RCU/WCU",
+     "why": "Throttles on spikes, overpays when quiet."
+    },
+    {
+     "t": "Provisioned with auto scaling, since on-demand costs 2.5× per request",
+     "why": "That ratio is outdated; on-demand fell about 50% in Nov 2024, and auto scaling lags spikes."
+    },
+    {
+     "t": "Add DAX",
+     "why": "A cache, not a capacity mode."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "ddb-steady",
+   "fix": "ddb-ondemand",
+   "q": "A DynamoDB table serves a steady, predictable load near the same level 24/7. What's the <b>most cost-effective</b> mode?",
+   "options": [
+    {
+     "t": "Provisioned capacity, with reserved capacity for the baseline",
+     "why": "High, steady utilization is where provisioned still wins."
+    },
+    {
+     "t": "On-demand",
+     "why": "Simpler, but costs more at steady high use."
+    },
+    {
+     "t": "On-demand with DAX",
+     "why": "DAX adds cost; doesn't change the mode math."
+    },
+    {
+     "t": "Global Tables",
+     "why": "Multi-region replication, not a pricing mode."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "rcu-math",
+   "q": "An app does <b>10 strongly consistent reads per second</b> of <b>6 KB</b> items. How many RCUs?",
+   "options": [
+    {
+     "t": "20",
+     "why": "6 KB rounds up to 8 KB = 2 RCU per read; 10 × 2 = 20."
+    },
+    {
+     "t": "10",
+     "why": "Each read needs 2 units because 6 KB is more than 4 KB."
+    },
+    {
+     "t": "15",
+     "why": "Item size rounds up to the next 4 KB, not 1.5 units."
+    },
+    {
+     "t": "30",
+     "why": "That rounds to 12 KB; rounding is to the next 4 KB."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "dax",
+   "q": "A read-heavy DynamoDB app needs <b>microsecond</b> read latency with <b>no application code rewrite</b>.",
+   "options": [
+    {
+     "t": "DynamoDB Accelerator (DAX)",
+     "why": "A drop-in cache that speaks the DynamoDB API."
+    },
+    {
+     "t": "ElastiCache for Redis",
+     "why": "Fast, but the app must add cache logic."
+    },
+    {
+     "t": "DynamoDB Global Tables",
+     "why": "For multi-region, not latency inside one region."
+    },
+    {
+     "t": "Switch to on-demand mode",
+     "why": "Billing mode, not latency."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "docdb-global",
+   "fix": "docdb-global",
+   "q": "A MongoDB-compatible app on DocumentDB needs DR in a <b>second region</b> with low RPO and <b>minimal operational overhead</b>.",
+   "options": [
+    {
+     "t": "DocumentDB Global Clusters",
+     "why": "Managed cross-region replication with fast promotion."
+    },
+    {
+     "t": "DocumentDB is single-region, so rewrite for DynamoDB Global Tables",
+     "why": "Global Clusters exist; no rewrite needed."
+    },
+    {
+     "t": "Self-managed MongoDB replica sets on EC2",
+     "why": "Lots of operations work."
+    },
+    {
+     "t": "Copy snapshots to the other region nightly",
+     "why": "RPO up to a day."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "ledger",
+   "fix": "qldb",
+   "q": "A team is designing a <b>new</b> system that needs a tamper-evident history of every change. Someone suggests QLDB. What's correct?",
+   "options": [
+    {
+     "t": "QLDB reached end of support in July 2025; build on Aurora PostgreSQL. Older exam questions may still expect QLDB",
+     "why": "AWS's migration path is Aurora PostgreSQL."
+    },
+    {
+     "t": "QLDB is the current AWS answer for any ledger",
+     "why": "It's retired."
+    },
+    {
+     "t": "Use DynamoDB with versioning turned on",
+     "why": "DynamoDB has no item versioning feature."
+    },
+    {
+     "t": "Use S3 Standard with lifecycle rules",
+     "why": "Lifecycle moves data; it doesn't prove history."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  }
+ ],
+ "drills": [
+  {
+   "id": "maz-or-rr",
+   "type": "thisorthat",
+   "title": "Multi-AZ or read replica?",
+   "intro": "60 seconds. Tap the one that fits.",
+   "a": "Multi-AZ",
+   "b": "Read replica",
+   "seconds": 60,
+   "items": [
+    {
+     "t": "Synchronous copy",
+     "ans": "a"
+    },
+    {
+     "t": "Offload reporting",
+     "ans": "b"
+    },
+    {
+     "t": "Automatic failover",
+     "ans": "a"
+    },
+    {
+     "t": "Can be in another region",
+     "ans": "b"
+    },
+    {
+     "t": "Standby isn't readable",
+     "ans": "a"
+    },
+    {
+     "t": "Promote by hand",
+     "ans": "b"
+    },
+    {
+     "t": "Survive an AZ outage",
+     "ans": "a"
+    },
+    {
+     "t": "Up to 15 of them",
+     "ans": "b"
+    }
+   ]
+  },
+  {
+   "id": "db-match",
+   "type": "match",
+   "title": "Match the database",
+   "intro": "Tap a database, then its trigger.",
+   "pairs": [
+    [
+     "Neptune",
+     "Fraud ring relationships"
+    ],
+    [
+     "DocumentDB",
+     "MongoDB-compatible"
+    ],
+    [
+     "Keyspaces",
+     "Cassandra CQL"
+    ],
+    [
+     "Timestream",
+     "Sensor readings over time"
+    ],
+    [
+     "DynamoDB",
+     "Serverless key-value, any scale"
+    ],
+    [
+     "Aurora Global",
+     "Relational, RPO ~1 s across regions"
+    ],
+    [
+     "ElastiCache",
+     "Leaderboard with sorted sets"
+    ]
+   ]
+  },
+  {
+   "id": "cache-buckets",
+   "type": "buckets",
+   "title": "Lazy loading, write-through or TTL?",
+   "intro": "Tap a statement, then where it belongs.",
+   "buckets": [
+    "Lazy loading",
+    "Write-through",
+    "TTL"
+   ],
+   "items": [
+    {
+     "t": "Fill the cache on a miss",
+     "b": 0
+    },
+    {
+     "t": "Cache never stale",
+     "b": 1
+    },
+    {
+     "t": "Entries expire on their own",
+     "b": 2
+    },
+    {
+     "t": "Only requested data is cached",
+     "b": 0
+    },
+    {
+     "t": "Every write costs twice",
+     "b": 1
+    },
+    {
+     "t": "Caps how stale data gets",
+     "b": 2
+    },
+    {
+     "t": "Slow first read (3 trips)",
+     "b": 0
+    },
+    {
+     "t": "Caches data nobody reads",
+     "b": 1
+    }
+   ]
+  },
+  {
+   "id": "db-keywords",
+   "type": "keyword",
+   "title": "Spot the keyword",
+   "intro": "Tap the phrase that decides the answer.",
+   "items": [
+    {
+     "parts": [
+      "An RDS database",
+      "was launched unencrypted",
+      "and must now be encrypted",
+      "with a short outage."
+     ],
+     "key": 1,
+     "answer": "Snapshot → encrypted copy → restore",
+     "why": "Existing + unencrypted means you can't switch it on in place."
+    },
+    {
+     "parts": [
+      "Serverless functions",
+      "open thousands of connections",
+      "to an RDS database",
+      "at peak."
+     ],
+     "key": 1,
+     "answer": "RDS Proxy",
+     "why": "Connection storms from Lambda are the Proxy tell."
+    },
+    {
+     "parts": [
+      "A DynamoDB app",
+      "needs microsecond reads",
+      "and the team",
+      "can't change code."
+     ],
+     "key": 1,
+     "answer": "DAX",
+     "why": "Microseconds + DynamoDB API = DAX."
+    },
+    {
+     "parts": [
+      "A relational app",
+      "serves users in 3 regions",
+      "and needs RPO of 1 second",
+      "on a regional outage."
+     ],
+     "key": 2,
+     "answer": "Aurora Global Database",
+     "why": "Second-level RPO across regions."
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,1151 @@
+{
+ "id": "ops",
+ "title": "Ops, cost, migration & DR",
+ "oneLiner": "<b>CloudWatch</b> watches, <b>CloudTrail</b> names who, <b>Config</b> checks rules. <b>Compute Optimizer</b> sizes, <b>Cost Explorer</b> recommends what to commit to. <b>DMS</b> moves data beyond databases. Pick the cheapest DR that meets RTO and RPO.",
+ "notes": [
+  {
+   "type": "h2",
+   "text": "Monitoring and governance: who answers what"
+  },
+  {
+   "type": "table",
+   "head": [
+    "Question",
+    "Service",
+    "Why / note"
+   ],
+   "rows": [
+    [
+     "How is it performing?",
+     "<b>CloudWatch</b>",
+     "Metrics, logs, alarms, dashboards"
+    ],
+    [
+     "Who did it, and when?",
+     "<b>CloudTrail</b>",
+     "Every API call. 90 days in the console; send to S3 + Athena for longer"
+    ],
+    [
+     "Is it configured correctly, and what changed?",
+     "<b>AWS Config</b>",
+     "Rules + history. Detects, doesn't prevent. Remediates via SSM Automation"
+    ],
+    [
+     "What should happen when X occurs?",
+     "<b>EventBridge</b>",
+     "Event rules and schedules → Lambda, SNS, Step Functions"
+    ]
+   ]
+  },
+  {
+   "type": "table",
+   "head": [
+    "CloudWatch feature",
+    "What it does"
+   ],
+   "rows": [
+    [
+     "Basic / detailed monitoring",
+     "5-minute metrics free; 1-minute is paid"
+    ],
+    [
+     "<b>CloudWatch agent</b>",
+     "Needed for <b>memory and disk</b> metrics and app logs from inside the OS"
+    ],
+    [
+     "Metric filters",
+     "Turn log patterns (\"ERROR\") into metrics and alarms"
+    ],
+    [
+     "Logs Insights",
+     "Query logs with a query language"
+    ],
+    [
+     "Subscription filters",
+     "Stream logs in real time to Lambda, Kinesis or Firehose"
+    ],
+    [
+     "Composite alarms",
+     "Combine alarms with AND/OR to cut noise"
+    ]
+   ]
+  },
+  {
+   "type": "traps",
+   "items": [
+    "CloudTrail <b>data events</b> (S3 object reads, Lambda invokes) are off by default and cost extra.",
+    "Config tells you a resource broke a rule. To <b>prevent</b> it, use SCPs or IAM."
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"who deleted\" / \"which user\"",
+     "CloudTrail"
+    ],
+    [
+     "\"memory utilization\"",
+     "CloudWatch agent"
+    ],
+    [
+     "\"non-compliant resources\" + \"auto-fix\"",
+     "Config rule + SSM remediation"
+    ],
+    [
+     "\"run Lambda when an instance stops\"",
+     "EventBridge rule"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Operate at scale: SSM and CloudFormation"
+  },
+  {
+   "type": "table",
+   "head": [
+    "Need",
+    "Answer",
+    "Why / note"
+   ],
+   "rows": [
+    [
+     "Shell into private instances, no SSH, no bastion, audited",
+     "<b>SSM Session Manager</b>",
+     "No open ports; needs the SSM agent + instance role"
+    ],
+    [
+     "Run a script on 500 instances",
+     "<b>SSM Run Command</b>",
+     ""
+    ],
+    [
+     "Patch the fleet on a schedule",
+     "<b>Patch Manager + Maintenance Windows</b>",
+     "Behind an ALB: the patch Automation runbook deregisters, patches, re-registers"
+    ],
+    [
+     "Config values and secrets in a hierarchy",
+     "<b>Parameter Store</b>",
+     "Rotation built in → Secrets Manager"
+    ],
+    [
+     "Same stack in many accounts and regions",
+     "<b>CloudFormation StackSets</b>",
+     "A stack is one account, one region"
+    ],
+    [
+     "Share an existing subnet or TGW with other accounts",
+     "<b>AWS RAM</b>",
+     "Shares; doesn't deploy"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"most secure access to private instances\"",
+     "Session Manager"
+    ],
+    [
+     "\"deploy to every account in the Organization\"",
+     "StackSets"
+    ],
+    [
+     "\"share subnets across accounts\"",
+     "RAM"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Cost tools: who recommends what"
+  },
+  {
+   "type": "p",
+   "html": "One rule: <b>Compute Optimizer picks the size, Cost Explorer shows the spend and recommends what to commit to, and nothing buys it for you</b>."
+  },
+  {
+   "type": "table",
+   "head": [
+    "Question",
+    "Tool",
+    "Why / do instead"
+   ],
+   "rows": [
+    [
+     "What size or type should this instance be?",
+     "<b>Compute Optimizer</b>",
+     "Right-sizes EC2, ASG, EBS, Lambda, ECS on Fargate, RDS. Doesn't pick pricing models"
+    ],
+    [
+     "Which Savings Plan or RI should we buy?",
+     "<b>Cost Explorer</b> recommendations (also in Cost Optimization Hub)",
+     "Based on your usage; you still buy it"
+    ],
+    [
+     "Where is the money going, and the forecast?",
+     "<b>Cost Explorer</b>",
+     "Graphs, filters, forecasts"
+    ],
+    [
+     "Alert when spend will pass $X",
+     "<b>AWS Budgets</b>",
+     "Cost, usage, RI/SP coverage; can trigger actions"
+    ],
+    [
+     "Most detailed data, per resource, hourly",
+     "<b>Cost and Usage Report</b> (Data Exports) + Athena",
+     "Raw billing data in S3"
+    ],
+    [
+     "Unexpected spikes",
+     "<b>Cost Anomaly Detection</b>",
+     "ML alerts"
+    ],
+    [
+     "Best-practice checks incl. idle resources",
+     "<b>Trusted Advisor</b>",
+     "6 categories; full checks on Business support and up"
+    ],
+    [
+     "Move S3 data to a cheaper class?",
+     "<b>S3 Storage Class Analysis</b>",
+     "Recommends Standard → Standard-IA only"
+    ]
+   ]
+  },
+  {
+   "type": "table",
+   "head": [
+    "Trusted Advisor category",
+    "Example check"
+   ],
+   "rows": [
+    [
+     "Cost optimization",
+     "Idle load balancers, low-use instances"
+    ],
+    [
+     "Performance",
+     "Overused instances"
+    ],
+    [
+     "Security",
+     "Open ports, root MFA, public buckets"
+    ],
+    [
+     "Fault tolerance",
+     "Single-AZ, no backups"
+    ],
+    [
+     "Service limits",
+     "Near a quota"
+    ],
+    [
+     "<b>Operational excellence</b>",
+     "Newest category"
+    ]
+   ]
+  },
+  {
+   "type": "traps",
+   "items": [
+    "Basic and Developer support get the service-limit checks and some security checks, more than the old \"7 core checks\". All checks and the API need Business or higher.",
+    "Organizations consolidated billing shares RI and Savings Plan discounts across member accounts."
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"right-size\" / \"over-provisioned\"",
+     "Compute Optimizer"
+    ],
+    [
+     "\"which Savings Plan to purchase\"",
+     "Cost Explorer recommendations"
+    ],
+    [
+     "\"alert before we overspend\"",
+     "AWS Budgets"
+    ],
+    [
+     "\"hourly per-resource billing\"",
+     "Cost and Usage Report + Athena"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Migration"
+  },
+  {
+   "type": "table",
+   "head": [
+    "Trigger",
+    "Answer",
+    "Why / note"
+   ],
+   "rows": [
+    [
+     "Lift-and-shift servers with minimal change",
+     "<b>Application Migration Service (MGN)</b>",
+     "Continuous block replication, then cutover"
+    ],
+    [
+     "Discover what runs on-prem first",
+     "<b>Application Discovery Service</b>",
+     "Feeds Migration Hub"
+    ],
+    [
+     "Database, minimal downtime",
+     "<b>DMS</b> (with CDC)",
+     "Source stays live while changes stream"
+    ],
+    [
+     "Different engines (Oracle → Aurora PostgreSQL)",
+     "<b>DMS + SCT</b> (or DMS Schema Conversion)",
+     "Same engine needs no schema conversion"
+    ],
+    [
+     "RDS MySQL → Aurora MySQL",
+     "<b>Snapshot restore</b> or an Aurora read replica",
+     "No DMS needed"
+    ],
+    [
+     "Files from NFS/SMB",
+     "<b>DataSync</b>",
+     ""
+    ],
+    [
+     "Petabytes, slow link",
+     "<b>Snowball Edge</b>",
+     ""
+    ]
+   ]
+  },
+  {
+   "type": "p",
+   "html": "<b>DMS isn't only for databases.</b> S3 is a valid source, and Kinesis Data Streams, MSK, Redshift, S3 and DynamoDB are valid targets. Ongoing CDC makes it a no-code pipeline into analytics."
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"continuously replicate\" DB → Redshift, least dev",
+     "DMS with CDC"
+    ],
+    [
+     "\"S3 into Kinesis\" + \"no custom code\"",
+     "DMS"
+    ],
+    [
+     "\"heterogeneous\"",
+     "SCT + DMS"
+    ],
+    [
+     "\"rehost VMs\"",
+     "MGN"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Backup and disaster recovery"
+  },
+  {
+   "type": "diagram",
+   "src": "content/diagrams/dr-ladder.svg",
+   "caption": "Pick the cheapest strategy that meets RTO and RPO"
+  },
+  {
+   "type": "table",
+   "head": [
+    "Need",
+    "Answer",
+    "Why / note"
+   ],
+   "rows": [
+    [
+     "Central backup policies across EC2, EBS, RDS, DynamoDB, EFS, FSx, S3",
+     "<b>AWS Backup</b>",
+     "Cross-region and cross-account copies"
+    ],
+    [
+     "Backups even root can't delete",
+     "<b>Backup Vault Lock</b> (compliance mode)",
+     "WORM"
+    ],
+    [
+     "On-prem or EC2 servers, RPO seconds, RTO minutes, low cost",
+     "<b>Elastic Disaster Recovery (DRS)</b>",
+     "Replicates continuously, launches on failover"
+    ],
+    [
+     "Route users to the DR region",
+     "<b>Route 53 failover</b> or Global Accelerator",
+     ""
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"lowest cost\" + \"hours of downtime OK\"",
+     "Backup and restore"
+    ],
+    [
+     "\"core DB always running\" + \"servers off\"",
+     "Pilot light"
+    ],
+    [
+     "\"scaled-down copy running\"",
+     "Warm standby"
+    ],
+    [
+     "\"zero downtime\"",
+     "Multi-site active-active"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Well-Architected pillars"
+  },
+  {
+   "type": "table",
+   "head": [
+    "Pillar",
+    "Ask",
+    "Typical answer"
+   ],
+   "rows": [
+    [
+     "Operational excellence",
+     "Can we run and improve it?",
+     "IaC, runbooks, small changes"
+    ],
+    [
+     "Security",
+     "Is it protected?",
+     "Least privilege, encryption, traceability"
+    ],
+    [
+     "Reliability",
+     "Does it recover?",
+     "Multi-AZ, auto scaling, tested DR"
+    ],
+    [
+     "Performance efficiency",
+     "Right resources?",
+     "Right type, serverless, caching"
+    ],
+    [
+     "Cost optimization",
+     "Paying only for what's needed?",
+     "Right-size, Spot, Savings Plans"
+    ],
+    [
+     "Sustainability",
+     "Least impact?",
+     "High utilization, managed services, Graviton"
+    ]
+   ]
+  }
+ ],
+ "questions": [
+  {
+   "id": "right-size",
+   "weak": "cost-tools",
+   "q": "EC2 instances look over-provisioned. The team wants ML-based recommendations for a <b>better instance type and size</b>.",
+   "options": [
+    {
+     "t": "AWS Compute Optimizer",
+     "why": "Right-sizing from utilization history is exactly its job."
+    },
+    {
+     "t": "Cost Explorer Savings Plans recommendations",
+     "why": "Tells you what to commit to, not what size to run."
+    },
+    {
+     "t": "AWS Budgets",
+     "why": "Alerts on spend; no sizing."
+    },
+    {
+     "t": "Trusted Advisor service limits",
+     "why": "Quotas, not sizing."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "what-to-buy",
+   "weak": "cost-tools",
+   "fix": "purchase-recs",
+   "q": "Steady EC2 usage has run for a year. Finance wants a recommendation on <b>which Savings Plan to buy</b> and how much to commit, with the <b>least effort</b>.",
+   "options": [
+    {
+     "t": "Use the Savings Plans purchase recommendations in Cost Explorer",
+     "why": "Built from your usage history; you review and buy."
+    },
+    {
+     "t": "Use AWS Compute Optimizer",
+     "why": "It right-sizes, it doesn't recommend pricing models."
+    },
+    {
+     "t": "No AWS tool helps; model it in a spreadsheet",
+     "why": "Cost Explorer already does this."
+    },
+    {
+     "t": "Let Trusted Advisor auto-renew the plan",
+     "why": "Trusted Advisor never buys or renews anything."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "cur",
+   "weak": "cost-tools",
+   "q": "Analysts need the <b>most detailed</b> billing data, per resource and per hour, queryable with SQL.",
+   "options": [
+    {
+     "t": "Cost and Usage Report (Data Exports) to S3, queried with Athena",
+     "why": "The most granular billing data AWS gives."
+    },
+    {
+     "t": "Cost Explorer",
+     "why": "Aggregated views, not raw line items."
+    },
+    {
+     "t": "AWS Budgets reports",
+     "why": "Summaries against budgets."
+    },
+    {
+     "t": "CloudTrail logs",
+     "why": "API calls, not costs."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "budgets",
+   "q": "A team wants an alert when <b>forecasted</b> monthly spend will pass $5,000, and to stop new instances if actual spend passes it.",
+   "options": [
+    {
+     "t": "AWS Budgets with a forecast alert and a budget action",
+     "why": "Budgets alert on forecasts and can apply actions like an SCP or IAM policy."
+    },
+    {
+     "t": "Cost Anomaly Detection",
+     "why": "Flags unusual spikes, not a fixed threshold."
+    },
+    {
+     "t": "A CloudWatch billing alarm only",
+     "why": "Alerts on actual charges, no forecast, no actions."
+    },
+    {
+     "t": "Compute Optimizer",
+     "why": "Sizing."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "ta",
+   "fix": "trusted-advisor",
+   "q": "Which statement about <b>AWS Trusted Advisor</b> is correct today?",
+   "options": [
+    {
+     "t": "It has 6 categories, including operational excellence, and the full set of checks needs Business support or higher",
+     "why": "Matches the current product."
+    },
+    {
+     "t": "It has 5 categories, and Basic support gets exactly 7 core checks",
+     "why": "Outdated: 6 categories, and Basic gets more checks now."
+    },
+    {
+     "t": "It auto-renews expiring Reserved Instances",
+     "why": "It only alerts."
+    },
+    {
+     "t": "It replaces AWS Config for compliance rules",
+     "why": "Different job: best-practice checks, not your own rules."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "dms-s3-kinesis",
+   "weak": "dms",
+   "q": "Historical records in S3 must be streamed into <b>Kinesis Data Streams</b> for a new consumer, with <b>no custom code</b>.",
+   "options": [
+    {
+     "t": "AWS DMS with S3 as the source and Kinesis Data Streams as the target",
+     "why": "Both are valid DMS endpoints, so it's configuration only."
+    },
+    {
+     "t": "A Lambda function that reads S3 and calls PutRecords",
+     "why": "Works, but it's custom code."
+    },
+    {
+     "t": "Firehose from S3 to Kinesis Data Streams",
+     "why": "Firehose delivers to destinations; S3 isn't a Firehose source and KDS isn't a target."
+    },
+    {
+     "t": "DMS only moves databases, so use DataSync",
+     "why": "DataSync copies files between storage, not into streams."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "dms-cdc",
+   "weak": "dms",
+   "q": "An on-prem Oracle database must <b>continuously replicate</b> into Amazon Redshift for analytics with the <b>least development time</b> and no servers to manage.",
+   "options": [
+    {
+     "t": "DMS (serverless) with full load + CDC, using SCT to convert the schema",
+     "why": "Managed replication with ongoing change capture."
+    },
+    {
+     "t": "Nightly exports to S3 and COPY into Redshift",
+     "why": "Not continuous, and scripts to maintain."
+    },
+    {
+     "t": "AWS Glue jobs every 5 minutes",
+     "why": "Batch ETL, more to build."
+    },
+    {
+     "t": "Snowball Edge shipped monthly",
+     "why": "Offline, one-off transfers."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "hetero",
+   "q": "A company moves from <b>SQL Server to Aurora PostgreSQL</b> with stored procedures. Which pair of tools fits?",
+   "options": [
+    {
+     "t": "Schema conversion (SCT or DMS Schema Conversion) plus DMS for the data",
+     "why": "Different engines need the schema and code converted first."
+    },
+    {
+     "t": "DMS alone",
+     "why": "Moves data, doesn't convert stored procedures."
+    },
+    {
+     "t": "A native snapshot restore into Aurora",
+     "why": "Snapshots only restore to the same engine family."
+    },
+    {
+     "t": "MGN",
+     "why": "Rehosts servers, doesn't convert databases."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "mysql-aurora",
+   "q": "RDS MySQL must move to <b>Aurora MySQL</b> with the <b>least effort</b>.",
+   "options": [
+    {
+     "t": "Restore an RDS MySQL snapshot into an Aurora MySQL cluster (or create an Aurora read replica and promote it)",
+     "why": "Same engine, so no DMS or schema conversion."
+    },
+    {
+     "t": "DMS with SCT",
+     "why": "SCT is for different engines."
+    },
+    {
+     "t": "Export to CSV and load into Aurora",
+     "why": "Slow and manual."
+    },
+    {
+     "t": "MGN",
+     "why": "For servers, not managed databases."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "mgn",
+   "q": "200 on-prem VMs must move to EC2 quickly with <b>minimal changes</b> and a short cutover.",
+   "options": [
+    {
+     "t": "AWS Application Migration Service (MGN)",
+     "why": "Replicates disks continuously and launches EC2 at cutover."
+    },
+    {
+     "t": "DataSync",
+     "why": "Moves files, not whole servers."
+    },
+    {
+     "t": "DMS",
+     "why": "Databases only."
+    },
+    {
+     "t": "Rebuild the servers with CloudFormation",
+     "why": "A rebuild, not a rehost."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "dr-cheapest",
+   "q": "A non-critical internal app can be down for a day and lose a few hours of data. What's the <b>most cost-effective</b> DR?",
+   "options": [
+    {
+     "t": "Backup and restore to another region",
+     "why": "Nothing runs in DR, so it's cheapest; RTO/RPO in hours fits."
+    },
+    {
+     "t": "Pilot light",
+     "why": "Costs more for a faster recovery nobody needs."
+    },
+    {
+     "t": "Warm standby",
+     "why": "Runs a whole scaled-down stack."
+    },
+    {
+     "t": "Multi-site active-active",
+     "why": "The most expensive option."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "pilot-light",
+   "q": "DR must recover in about 30 minutes with minutes of data loss. The database should replicate continuously, but app servers <b>shouldn't run</b> until needed.",
+   "options": [
+    {
+     "t": "Pilot light",
+     "why": "Data replicated and running; compute starts from AMIs at failover."
+    },
+    {
+     "t": "Backup and restore",
+     "why": "Hours to restore."
+    },
+    {
+     "t": "Warm standby",
+     "why": "Keeps servers running, which the brief rules out."
+    },
+    {
+     "t": "Multi-site",
+     "why": "Full production running in both."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "warm-standby",
+   "q": "A business-critical app needs recovery in <b>minutes</b>. Budget allows a <b>scaled-down but fully working</b> copy in another region.",
+   "options": [
+    {
+     "t": "Warm standby",
+     "why": "A small full stack that scales up on failover."
+    },
+    {
+     "t": "Pilot light",
+     "why": "Servers off, so recovery takes longer."
+    },
+    {
+     "t": "Backup and restore",
+     "why": "Hours."
+    },
+    {
+     "t": "Multi-site active-active",
+     "why": "Full size in both regions; more than the budget allows."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "drs",
+   "q": "On-prem servers need DR on AWS with <b>RPO in seconds</b> and <b>RTO in minutes</b>, without paying for running servers until a disaster.",
+   "options": [
+    {
+     "t": "AWS Elastic Disaster Recovery (DRS)",
+     "why": "Continuous block replication to cheap staging; launches instances on failover."
+    },
+    {
+     "t": "AWS Backup daily backups",
+     "why": "RPO up to a day."
+    },
+    {
+     "t": "A warm standby fleet on EC2",
+     "why": "Pays for running servers all the time."
+    },
+    {
+     "t": "Snowball Edge",
+     "why": "Offline transfer."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "backup-lock",
+   "q": "Backups for EC2, RDS and DynamoDB must be managed centrally and <b>no one, not even root</b>, may delete them during retention.",
+   "options": [
+    {
+     "t": "AWS Backup plans with Backup Vault Lock in compliance mode",
+     "why": "Central policies plus WORM vaults."
+    },
+    {
+     "t": "Per-service snapshots with IAM deny policies",
+     "why": "Root and admins can change IAM."
+    },
+    {
+     "t": "S3 Versioning on a bucket of exports",
+     "why": "Doesn't cover those services' native backups."
+    },
+    {
+     "t": "Data Lifecycle Manager",
+     "why": "EBS snapshots and AMIs only."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "who-deleted",
+   "q": "A security group was deleted last night. Who did it?",
+   "options": [
+    {
+     "t": "CloudTrail event history",
+     "why": "Records every API call with the caller."
+    },
+    {
+     "t": "AWS Config",
+     "why": "Shows the resource changed, but CloudTrail names the caller."
+    },
+    {
+     "t": "CloudWatch metrics",
+     "why": "Performance, not actions."
+    },
+    {
+     "t": "VPC Flow Logs",
+     "why": "Network traffic, not API calls."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "config-remediate",
+   "q": "Any EBS volume created <b>unencrypted</b> must be flagged and fixed automatically with the <b>least custom code</b>.",
+   "options": [
+    {
+     "t": "An AWS Config managed rule with SSM Automation remediation",
+     "why": "Detects and fixes using built-in pieces."
+    },
+    {
+     "t": "CloudTrail with a Lambda that scans logs",
+     "why": "Custom code."
+    },
+    {
+     "t": "A nightly script on EC2",
+     "why": "Custom and delayed."
+    },
+    {
+     "t": "Trusted Advisor",
+     "why": "Best-practice checks, no custom remediation."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "eb-rule",
+   "q": "A Lambda function must run whenever an EC2 instance enters the <b>stopped</b> state.",
+   "options": [
+    {
+     "t": "An EventBridge rule on EC2 state-change events targeting the Lambda",
+     "why": "Native event, no polling."
+    },
+    {
+     "t": "A CloudWatch alarm on CPU = 0",
+     "why": "Indirect and unreliable."
+    },
+    {
+     "t": "CloudTrail Insights",
+     "why": "Detects unusual API volume, not state changes."
+    },
+    {
+     "t": "A cron Lambda that lists instances every minute",
+     "why": "Polling."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "memory-metric",
+   "q": "Ops needs <b>memory utilization</b> for EC2 instances in CloudWatch.",
+   "options": [
+    {
+     "t": "Install the CloudWatch agent on the instances",
+     "why": "Memory is inside the OS; the hypervisor can't see it."
+    },
+    {
+     "t": "Enable detailed monitoring",
+     "why": "Adds 1-minute metrics, still no memory."
+    },
+    {
+     "t": "Turn on VPC Flow Logs",
+     "why": "Network data."
+    },
+    {
+     "t": "Use CloudTrail data events",
+     "why": "API calls."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "session-mgr",
+   "q": "Admins need shell access to instances in <b>private subnets</b>, with <b>no open inbound ports, no bastion</b>, and every session logged.",
+   "options": [
+    {
+     "t": "SSM Session Manager",
+     "why": "Agent-based access over HTTPS with logging."
+    },
+    {
+     "t": "A bastion host in a public subnet",
+     "why": "Opens port 22 and is one more server."
+    },
+    {
+     "t": "EC2 Instance Connect with public IPs",
+     "why": "Needs inbound SSH and public exposure."
+    },
+    {
+     "t": "A Site-to-Site VPN plus SSH",
+     "why": "Ports and keys still to manage."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  }
+ ],
+ "drills": [
+  {
+   "id": "who-answers",
+   "type": "buckets",
+   "title": "CloudWatch, CloudTrail, Config or EventBridge?",
+   "intro": "Tap a question, then the service that answers it.",
+   "buckets": [
+    "CloudWatch",
+    "CloudTrail",
+    "Config",
+    "EventBridge"
+   ],
+   "items": [
+    {
+     "t": "CPU is above 80%",
+     "b": 0
+    },
+    {
+     "t": "Who terminated the instance?",
+     "b": 1
+    },
+    {
+     "t": "Are all volumes encrypted?",
+     "b": 2
+    },
+    {
+     "t": "Run Lambda every night at 2 AM",
+     "b": 3
+    },
+    {
+     "t": "Memory metric from the agent",
+     "b": 0
+    },
+    {
+     "t": "Which IAM user called DeleteBucket",
+     "b": 1
+    },
+    {
+     "t": "What did this SG look like last week?",
+     "b": 2
+    },
+    {
+     "t": "React when an instance stops",
+     "b": 3
+    }
+   ]
+  },
+  {
+   "id": "cost-match",
+   "type": "match",
+   "title": "Match the cost tool",
+   "intro": "Tap a tool, then its job.",
+   "pairs": [
+    [
+     "Compute Optimizer",
+     "Right-size the instance"
+    ],
+    [
+     "Cost Explorer",
+     "Which Savings Plan to buy"
+    ],
+    [
+     "AWS Budgets",
+     "Alert before overspending"
+    ],
+    [
+     "Cost and Usage Report",
+     "Hourly per-resource line items"
+    ],
+    [
+     "Cost Anomaly Detection",
+     "Unexpected spike"
+    ],
+    [
+     "Trusted Advisor",
+     "Idle LB and open ports check"
+    ],
+    [
+     "Storage Class Analysis",
+     "Standard → Standard-IA advice"
+    ]
+   ]
+  },
+  {
+   "id": "dr-buckets",
+   "type": "buckets",
+   "title": "Which DR strategy?",
+   "intro": "Tap a requirement, then the cheapest strategy that meets it.",
+   "buckets": [
+    "Backup & restore",
+    "Pilot light",
+    "Warm standby",
+    "Multi-site"
+   ],
+   "items": [
+    {
+     "t": "RTO 24 h, lowest cost",
+     "b": 0
+    },
+    {
+     "t": "DB replicated, servers off",
+     "b": 1
+    },
+    {
+     "t": "Small full copy running",
+     "b": 2
+    },
+    {
+     "t": "Zero downtime, any cost",
+     "b": 3
+    },
+    {
+     "t": "Nothing running in DR",
+     "b": 0
+    },
+    {
+     "t": "RTO ~30 min",
+     "b": 1
+    },
+    {
+     "t": "RTO a few minutes",
+     "b": 2
+    },
+    {
+     "t": "Both regions take traffic",
+     "b": 3
+    }
+   ]
+  },
+  {
+   "id": "ops-keywords",
+   "type": "keyword",
+   "title": "Spot the keyword",
+   "intro": "Tap the phrase that decides the answer.",
+   "items": [
+    {
+     "parts": [
+      "Data in S3",
+      "must flow into Kinesis Data Streams",
+      "with no custom code",
+      "for a new consumer."
+     ],
+     "key": 2,
+     "answer": "DMS",
+     "why": "No code + S3 source + KDS target = DMS."
+    },
+    {
+     "parts": [
+      "The CFO asks",
+      "which Savings Plan",
+      "the company should buy",
+      "based on last year."
+     ],
+     "key": 1,
+     "answer": "Cost Explorer recommendations",
+     "why": "Purchase advice, not sizing."
+    },
+    {
+     "parts": [
+      "An app can be down",
+      "for up to 30 minutes",
+      "but app servers",
+      "must not run in DR."
+     ],
+     "key": 3,
+     "answer": "Pilot light",
+     "why": "Servers off but data ready."
+    },
+    {
+     "parts": [
+      "Admins need access",
+      "to private instances",
+      "with no inbound ports",
+      "and full session logs."
+     ],
+     "key": 2,
+     "answer": "SSM Session Manager",
+     "why": "No open ports rules out bastions and SSH."
+    }
+   ]
+  }
+ ]
+}

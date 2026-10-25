@@ -1,0 +1,42 @@
+<svg viewBox="0 0 720 300" role="img" aria-label="How AWS decides a request inside one account, simplified. An explicit deny anywhere means deny. Otherwise the SCP must allow it, the permission boundary must allow it if one is set, and an identity or resource policy must allow it. If anything says no, the result is an implicit deny." xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="ie-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="dg-head"/></marker>
+  </defs>
+  <rect x="10" y="40" width="120" height="70" rx="8" class="dg-box"/>
+  <text x="70" y="70" text-anchor="middle" class="dg-t">Explicit</text>
+  <text x="70" y="90" text-anchor="middle" class="dg-t">Deny anywhere?</text>
+  <rect x="160" y="40" width="120" height="70" rx="8" class="dg-box"/>
+  <text x="220" y="70" text-anchor="middle" class="dg-t">SCP</text>
+  <text x="220" y="90" text-anchor="middle" class="dg-s">allows it?</text>
+  <rect x="310" y="40" width="120" height="70" rx="8" class="dg-box"/>
+  <text x="370" y="70" text-anchor="middle" class="dg-t">Permission</text>
+  <text x="370" y="90" text-anchor="middle" class="dg-s">boundary allows?</text>
+  <rect x="460" y="40" width="120" height="70" rx="8" class="dg-box"/>
+  <text x="520" y="62" text-anchor="middle" class="dg-t">Identity or</text>
+  <text x="520" y="80" text-anchor="middle" class="dg-t">resource policy</text>
+  <text x="520" y="98" text-anchor="middle" class="dg-s">allows?</text>
+  <rect x="610" y="40" width="100" height="70" rx="8" class="dg-acc"/>
+  <text x="660" y="80" text-anchor="middle" class="dg-t">ALLOW</text>
+  <path d="M130 75H160" class="dg-l" marker-end="url(#ie-arrow)"/>
+  <path d="M280 75H310" class="dg-l" marker-end="url(#ie-arrow)"/>
+  <path d="M430 75H460" class="dg-l" marker-end="url(#ie-arrow)"/>
+  <path d="M580 75H610" class="dg-l" marker-end="url(#ie-arrow)"/>
+  <text x="145" y="66" text-anchor="middle" class="dg-s">no</text>
+  <text x="295" y="66" text-anchor="middle" class="dg-s">yes</text>
+  <text x="445" y="66" text-anchor="middle" class="dg-s">yes</text>
+  <text x="595" y="66" text-anchor="middle" class="dg-s">yes</text>
+  <rect x="10" y="170" width="120" height="50" rx="8" class="dg-acc2"/>
+  <text x="70" y="200" text-anchor="middle" class="dg-t">DENY</text>
+  <rect x="160" y="170" width="420" height="50" rx="8" class="dg-acc2"/>
+  <text x="370" y="200" text-anchor="middle" class="dg-t">Implicit DENY (nothing allowed it)</text>
+  <path d="M70 110V170" class="dg-l" marker-end="url(#ie-arrow)"/>
+  <path d="M220 110V170" class="dg-l" marker-end="url(#ie-arrow)"/>
+  <path d="M370 110V170" class="dg-l" marker-end="url(#ie-arrow)"/>
+  <path d="M520 110V170" class="dg-l" marker-end="url(#ie-arrow)"/>
+  <text x="78" y="145" class="dg-s">yes</text>
+  <text x="228" y="145" class="dg-s">no</text>
+  <text x="378" y="145" class="dg-s">no</text>
+  <text x="528" y="145" class="dg-s">no</text>
+  <text x="10" y="256" class="dg-s">SCPs and boundaries never grant. They only cap. Cross-account needs an allow on BOTH sides:</text>
+  <text x="10" y="276" class="dg-s">the resource policy names the other account, and that account's IAM policy allows its user.</text>
+</svg>

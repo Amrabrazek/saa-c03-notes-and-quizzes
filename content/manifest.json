@@ -5,37 +5,43 @@
       "id": "compute",
       "num": 1,
       "title": "Compute & scaling",
-      "built": false
+      "built": true,
+      "file": "content/compute.json"
     },
     {
       "id": "storage",
       "num": 2,
       "title": "Block & file storage",
-      "built": false
+      "built": true,
+      "file": "content/storage.json"
     },
     {
       "id": "s3",
       "num": 3,
       "title": "S3",
-      "built": false
+      "built": true,
+      "file": "content/s3.json"
     },
     {
       "id": "databases",
       "num": 4,
       "title": "Databases",
-      "built": false
+      "built": true,
+      "file": "content/databases.json"
     },
     {
       "id": "vpc",
       "num": 5,
       "title": "VPC core",
-      "built": false
+      "built": true,
+      "file": "content/vpc.json"
     },
     {
       "id": "hybrid",
       "num": 6,
       "title": "Hybrid connectivity",
-      "built": false
+      "built": true,
+      "file": "content/hybrid.json"
     },
     {
       "id": "edge",
@@ -48,19 +54,22 @@
       "id": "integration",
       "num": 8,
       "title": "Integration, analytics & ML",
-      "built": false
+      "built": true,
+      "file": "content/integration.json"
     },
     {
       "id": "security",
       "num": 9,
       "title": "Security & identity",
-      "built": false
+      "built": true,
+      "file": "content/security.json"
     },
     {
       "id": "ops",
       "num": 10,
       "title": "Ops, cost, migration & DR",
-      "built": false
+      "built": true,
+      "file": "content/ops.json"
     }
   ]
 }

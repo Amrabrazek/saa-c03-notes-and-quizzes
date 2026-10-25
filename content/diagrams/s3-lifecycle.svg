@@ -1,0 +1,44 @@
+<svg viewBox="0 0 720 360" role="img" aria-label="S3 lifecycle moves objects only downward: Standard, Standard-IA, Intelligent-Tiering, One Zone-IA, Glacier Instant Retrieval, Glacier Flexible Retrieval, Glacier Deep Archive. Standard-IA and One Zone-IA need 30 days in Standard first. One Zone-IA can't go to Glacier Instant Retrieval. Snowball imports land in S3 Standard, then a 0-day rule moves them to Deep Archive." xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="sl-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="dg-head"/></marker>
+  </defs>
+  <text x="20" y="24" class="dg-s">hot · pay more to store, little or nothing to read</text>
+  <text x="700" y="24" text-anchor="end" class="dg-s">cold · cheap to store, pay to read, wait longer</text>
+  <!-- row of classes -->
+  <rect x="20" y="40" width="120" height="58" rx="8" class="dg-acc"/>
+  <text x="80" y="66" text-anchor="middle" class="dg-t">Standard</text>
+  <text x="80" y="84" text-anchor="middle" class="dg-s">ms · no min</text>
+  <rect x="170" y="40" width="120" height="58" rx="8" class="dg-box"/>
+  <text x="230" y="66" text-anchor="middle" class="dg-t">Standard-IA</text>
+  <text x="230" y="84" text-anchor="middle" class="dg-s">ms · 30 d min</text>
+  <rect x="320" y="40" width="120" height="58" rx="8" class="dg-box"/>
+  <text x="380" y="66" text-anchor="middle" class="dg-t">One Zone-IA</text>
+  <text x="380" y="84" text-anchor="middle" class="dg-s">ms · 1 AZ · 30 d</text>
+  <rect x="470" y="40" width="230" height="58" rx="8" class="dg-box"/>
+  <text x="585" y="66" text-anchor="middle" class="dg-t">Intelligent-Tiering</text>
+  <text x="585" y="84" text-anchor="middle" class="dg-s">moves itself · no retrieval fee</text>
+  <rect x="20" y="170" width="200" height="58" rx="8" class="dg-acc2"/>
+  <text x="120" y="196" text-anchor="middle" class="dg-t">Glacier Instant Retrieval</text>
+  <text x="120" y="214" text-anchor="middle" class="dg-s">ms · 90 d min · read fee ↑</text>
+  <rect x="260" y="170" width="200" height="58" rx="8" class="dg-acc2"/>
+  <text x="360" y="196" text-anchor="middle" class="dg-t">Glacier Flexible Retrieval</text>
+  <text x="360" y="214" text-anchor="middle" class="dg-s">minutes-hours · 90 d min</text>
+  <rect x="500" y="170" width="200" height="58" rx="8" class="dg-acc2"/>
+  <text x="600" y="196" text-anchor="middle" class="dg-t">Glacier Deep Archive</text>
+  <text x="600" y="214" text-anchor="middle" class="dg-s">12-48 h · 180 d min</text>
+  <!-- arrows -->
+  <path d="M140 69H170" class="dg-l" marker-end="url(#sl-arrow)"/>
+  <path d="M290 69H320" class="dg-l" marker-end="url(#sl-arrow)"/>
+  <path d="M80 98V170" class="dg-l" marker-end="url(#sl-arrow)"/>
+  <text x="88" y="140" class="dg-s">day 0 OK</text>
+  <path d="M230 98Q230 140 150 170" class="dg-l" marker-end="url(#sl-arrow)"/>
+  <path d="M380 98V170" class="dg-l" marker-end="url(#sl-arrow)"/>
+  <path d="M220 199H260" class="dg-l" marker-end="url(#sl-arrow)"/>
+  <path d="M460 199H500" class="dg-l" marker-end="url(#sl-arrow)"/>
+  <text x="396" y="140" class="dg-s">✕ never One Zone-IA → Glacier Instant</text>
+  <!-- snowball -->
+  <rect x="20" y="270" width="680" height="74" rx="10" class="dg-box dg-dash" style="fill:none"/>
+  <text x="36" y="294" class="dg-t">Snowball can't write to Glacier directly</text>
+  <text x="36" y="318" class="dg-s">Snowball Edge → import into S3 Standard → lifecycle rule with 0 days → Glacier Deep Archive</text>
+  <text x="36" y="336" class="dg-s">Lifecycle only moves down. To read a Glacier object again, restore it first.</text>
+</svg>

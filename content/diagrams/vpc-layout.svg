@@ -1,0 +1,49 @@
+<svg viewBox="0 0 720 430" role="img" aria-label="A VPC in one region. Public subnet has the ALB and NAT gateway and routes 0.0.0.0/0 to the internet gateway. Private subnet has EC2 and RDS, routes 0.0.0.0/0 to the NAT gateway, and reaches S3 through a gateway endpoint and SQS through an interface endpoint." xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="vl-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="dg-head"/></marker>
+  </defs>
+  <!-- internet -->
+  <rect x="250" y="12" width="220" height="40" rx="8" class="dg-box"/>
+  <text x="360" y="37" text-anchor="middle" class="dg-t">Internet</text>
+  <path d="M360 52V86" class="dg-l" marker-end="url(#vl-arrow)" marker-start="url(#vl-arrow)"/>
+  <!-- vpc -->
+  <rect x="20" y="70" width="680" height="345" rx="12" class="dg-box dg-dash" style="fill:none"/>
+  <text x="36" y="94" class="dg-s">VPC · one region · e.g. 10.0.0.0/16</text>
+  <rect x="290" y="86" width="140" height="36" rx="8" class="dg-acc"/>
+  <text x="360" y="109" text-anchor="middle" class="dg-t">Internet gateway</text>
+  <!-- public subnet -->
+  <rect x="40" y="140" width="300" height="120" rx="10" class="dg-box"/>
+  <text x="56" y="162" class="dg-t">Public subnet</text>
+  <text x="56" y="180" class="dg-s">route: 0.0.0.0/0 → internet gateway</text>
+  <rect x="56" y="196" width="128" height="44" rx="8" class="dg-acc2"/>
+  <text x="120" y="216" text-anchor="middle" class="dg-t">NAT gateway</text>
+  <text x="120" y="232" text-anchor="middle" class="dg-s">one per AZ</text>
+  <rect x="204" y="196" width="120" height="44" rx="8" class="dg-box"/>
+  <text x="264" y="223" text-anchor="middle" class="dg-t">ALB</text>
+  <path d="M56 218H30V104H290" class="dg-l" marker-end="url(#vl-arrow)"/>
+  <!-- private subnet -->
+  <rect x="380" y="140" width="300" height="120" rx="10" class="dg-box"/>
+  <text x="396" y="162" class="dg-t">Private subnet</text>
+  <text x="396" y="180" class="dg-s">route: 0.0.0.0/0 → NAT gateway</text>
+  <rect x="396" y="196" width="120" height="44" rx="8" class="dg-box"/>
+  <text x="456" y="223" text-anchor="middle" class="dg-t">EC2 app</text>
+  <rect x="540" y="196" width="124" height="44" rx="8" class="dg-box"/>
+  <text x="602" y="223" text-anchor="middle" class="dg-t">RDS</text>
+  <path d="M324 218H396" class="dg-l" marker-end="url(#vl-arrow)"/>
+  <path d="M430 240V292H120V244" class="dg-l dg-dashl" marker-end="url(#vl-arrow)"/>
+  <text x="250" y="310" text-anchor="middle" class="dg-s">private → NAT → internet: outbound only</text>
+  <!-- endpoints -->
+  <rect x="380" y="320" width="140" height="78" rx="8" class="dg-acc"/>
+  <text x="450" y="344" text-anchor="middle" class="dg-t">Gateway endpoint</text>
+  <text x="450" y="362" text-anchor="middle" class="dg-s">route-table entry</text>
+  <text x="450" y="380" text-anchor="middle" class="dg-s">S3 · DynamoDB · free</text>
+  <rect x="540" y="320" width="140" height="78" rx="8" class="dg-acc2"/>
+  <text x="610" y="344" text-anchor="middle" class="dg-t">Interface endpoint</text>
+  <text x="610" y="362" text-anchor="middle" class="dg-s">ENI + SG, paid</text>
+  <text x="610" y="380" text-anchor="middle" class="dg-s">SQS, KMS, SSM…</text>
+  <path d="M470 240V320" class="dg-l" marker-end="url(#vl-arrow)"/>
+  <path d="M500 240Q560 270 600 320" class="dg-l" marker-end="url(#vl-arrow)"/>
+  <text x="40" y="340" class="dg-s">A subnet is "public" only because its</text>
+  <text x="40" y="358" class="dg-s">route table sends 0.0.0.0/0 to an IGW.</text>
+  <text x="40" y="376" class="dg-s">There is no "public" checkbox.</text>
+</svg>

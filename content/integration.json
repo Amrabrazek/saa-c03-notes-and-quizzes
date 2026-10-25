@@ -1,0 +1,1299 @@
+{
+ "id": "integration",
+ "title": "Integration, analytics & ML",
+ "oneLiner": "<b>SQS</b> holds work for one worker, <b>SNS</b> pushes copies to many, <b>EventBridge</b> routes events (including SaaS and schedules). <b>Data Streams</b> keeps a stream for your own apps; <b>Firehose</b> just delivers it.",
+ "notes": [
+  {
+   "type": "h2",
+   "text": "Queue, topic or event bus?"
+  },
+  {
+   "type": "p",
+   "html": "Three ways to pass messages. Ask: <b>does one worker pull it</b> (queue), <b>do many subscribers get a copy pushed</b> (topic), or <b>do events get routed by their content and source</b> (bus)?"
+  },
+  {
+   "type": "table",
+   "head": [
+    "",
+    "SQS",
+    "SNS",
+    "EventBridge"
+   ],
+   "rows": [
+    [
+     "Model",
+     "Queue, consumers <b>pull</b>",
+     "Pub/sub, <b>push</b> to subscribers",
+     "Event bus, <b>rules route</b> events to targets"
+    ],
+    [
+     "Keeps messages?",
+     "Yes, up to 14 days",
+     "No (retries, then DLQ)",
+     "Archive and replay if enabled"
+    ],
+    [
+     "Fan-out",
+     "No, one consumer per message",
+     "<b>Yes</b> (SNS → many SQS queues)",
+     "Yes, many rules and targets"
+    ],
+    [
+     "Filtering",
+     "No",
+     "Subscription filter policies",
+     "Rich content filtering in rules"
+    ],
+    [
+     "Sources",
+     "Your apps",
+     "Your apps, AWS services",
+     "Your apps, AWS services, <b>SaaS partners</b> (Zendesk, Datadog, Salesforce…)"
+    ],
+    [
+     "Schedules",
+     "No",
+     "No",
+     "<b>Yes</b> (cron, EventBridge Scheduler)"
+    ]
+   ]
+  },
+  {
+   "type": "table",
+   "head": [
+    "Also on the exam",
+    "Use it for"
+   ],
+   "rows": [
+    [
+     "<b>Amazon MQ</b>",
+     "Moving an existing RabbitMQ/ActiveMQ app that speaks AMQP, MQTT, STOMP. Don't rewrite to SQS"
+    ],
+    [
+     "<b>Step Functions</b>",
+     "Orchestrating steps with retries and branches. Standard: up to 1 year, exactly-once. Express: up to 5 minutes, high volume"
+    ],
+    [
+     "<b>AppFlow</b>",
+     "Copying data from SaaS apps (Salesforce, Zendesk) into S3 or Redshift on a schedule"
+    ]
+   ]
+  },
+  {
+   "type": "traps",
+   "items": [
+    "<b>\"React to events from a SaaS app\"</b> → EventBridge partner event source. SQS and SNS have no SaaS sources.",
+    "<b>\"Copy SaaS data into S3 / Redshift\"</b> → AppFlow (data transfer), not EventBridge (events).",
+    "Fan-out where each consumer gets only some messages: <b>SNS filter policies</b>, not filtering in code."
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"decouple\" / \"buffer\" / \"worker pulls\"",
+     "SQS"
+    ],
+    [
+     "\"fan-out\" / \"notify many\"",
+     "SNS (+ SQS queues)"
+    ],
+    [
+     "\"SaaS events\" / \"cron\" / \"route by event content\"",
+     "EventBridge"
+    ],
+    [
+     "\"existing RabbitMQ / MQTT app\"",
+     "Amazon MQ"
+    ],
+    [
+     "\"orchestrate steps\" / \"state machine\"",
+     "Step Functions"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "SQS details that get tested"
+  },
+  {
+   "type": "table",
+   "head": [
+    "Setting",
+    "What it does",
+    "Default / max"
+   ],
+   "rows": [
+    [
+     "<b>Visibility timeout</b>",
+     "Hides a message from <b>other</b> consumers while one works on it",
+     "30 s / 12 h"
+    ],
+    [
+     "<b>Delay</b>",
+     "Hides a new message from <b>everyone</b> before first delivery",
+     "0 / 15 min"
+    ],
+    [
+     "<b>Retention</b>",
+     "How long unprocessed messages stay",
+     "4 days / 14 days"
+    ],
+    [
+     "<b>Long polling</b>",
+     "Wait up to 20 s for messages: fewer empty calls, lower cost",
+     "Off / 20 s"
+    ],
+    [
+     "<b>Dead-letter queue</b>",
+     "Catches messages that fail N times",
+     "Set maxReceiveCount"
+    ],
+    [
+     "<b>Message size</b>",
+     "Max payload",
+     "<b>1 MiB</b> (was 256 KB). Bigger: Extended Client stores the body in S3"
+    ]
+   ]
+  },
+  {
+   "type": "table",
+   "head": [
+    "",
+    "Standard",
+    "FIFO"
+   ],
+   "rows": [
+    [
+     "Order",
+     "Best effort",
+     "<b>Strict, per message group ID</b>"
+    ],
+    [
+     "Delivery",
+     "At least once (duplicates possible)",
+     "Exactly-once processing (dedup)"
+    ],
+    [
+     "Throughput",
+     "Nearly unlimited",
+     "300 msg/s, 3,000 with batching (high-throughput mode: more)"
+    ]
+   ]
+  },
+  {
+   "type": "traps",
+   "items": [
+    "Messages processed twice? <b>Visibility timeout is shorter than processing time.</b> Raise it.",
+    "<b>Order per customer, but customers in parallel</b> → FIFO with message group ID = customer ID.",
+    "Payloads over the limit → <b>SQS Extended Client + S3</b>, not a bigger queue."
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"processed more than once\"",
+     "Increase visibility timeout (and make consumers idempotent)"
+    ],
+    [
+     "\"reduce empty receives / cost\"",
+     "Long polling"
+    ],
+    [
+     "\"order per user, parallel across users\"",
+     "FIFO + message group ID"
+    ],
+    [
+     "\"large messages\"",
+     "Extended Client Library + S3"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Kinesis Data Streams vs Firehose"
+  },
+  {
+   "type": "p",
+   "html": "<b>Data Streams</b> stores the stream so <b>your own apps</b> can read and replay it. <b>Firehose</b> is a delivery truck: it buffers and drops the data in S3, Redshift or OpenSearch with no code."
+  },
+  {
+   "type": "diagram",
+   "src": "content/diagrams/kinesis-flow.svg",
+   "caption": "Streams keeps data for consumers; Firehose delivers it"
+  },
+  {
+   "type": "table",
+   "head": [
+    "",
+    "Kinesis Data Streams",
+    "Amazon Data Firehose"
+   ],
+   "rows": [
+    [
+     "Job",
+     "Real-time stream for <b>custom consumers</b>",
+     "<b>Load</b> streaming data into a destination"
+    ],
+    [
+     "Storage / replay",
+     "<b>24 h to 365 days</b>, replay",
+     "<b>None</b>"
+    ],
+    [
+     "Latency",
+     "Real time (~200 ms)",
+     "<b>Near real time</b> (buffer by size or time; can be 0 s now)"
+    ],
+    [
+     "Scaling",
+     "Shards (provisioned) or on-demand",
+     "Fully automatic"
+    ],
+    [
+     "Code",
+     "You write consumers",
+     "<b>No code</b>; optional Lambda transform"
+    ],
+    [
+     "Extras",
+     "Enhanced fan-out: 2 MB/s per consumer per shard",
+     "Converts JSON to Parquet/ORC on the way to S3"
+    ]
+   ]
+  },
+  {
+   "type": "table",
+   "head": [
+    "Also in streaming",
+    "Pick when"
+   ],
+   "rows": [
+    [
+     "<b>Managed Service for Apache Flink</b> (was Kinesis Data Analytics)",
+     "Real-time SQL or Flink apps on a stream"
+    ],
+    [
+     "<b>Amazon MSK</b>",
+     "\"Kafka\" or migrating an existing Kafka cluster"
+    ],
+    [
+     "<b>SQS</b>",
+     "Each message goes to one worker and is deleted. No replay"
+    ]
+   ]
+  },
+  {
+   "type": "traps",
+   "items": [
+    "<b>\"Custom application\" / \"multiple consumers\" / \"replay\"</b> → Data Streams. Firehose has no custom consumers.",
+    "<b>\"Easiest\" / \"no code\" / \"load into S3 or Redshift\"</b> → Firehose.",
+    "Several consumers falling behind on one stream → <b>enhanced fan-out</b>, not more Firehose."
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"real time\" + \"custom processing\"",
+     "Kinesis Data Streams"
+    ],
+    [
+     "\"near real time\" + \"deliver to S3/Redshift/OpenSearch\"",
+     "Firehose"
+    ],
+    [
+     "\"Kafka\"",
+     "MSK"
+    ],
+    [
+     "\"SQL on streaming data\"",
+     "Managed Service for Apache Flink"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Throttle or buffer? API Gateway and Lambda"
+  },
+  {
+   "type": "p",
+   "html": "<b>Throttling rejects</b> extra requests (HTTP 429). <b>Buffering holds</b> them until the backend catches up. Spiky load that must not be lost needs a buffer."
+  },
+  {
+   "type": "table",
+   "head": [
+    "Service",
+    "Throttles",
+    "Buffers",
+    "Note"
+   ],
+   "rows": [
+    [
+     "API Gateway",
+     "<b>Yes</b>",
+     "No",
+     "10,000 req/s account default; usage plans + API keys per customer"
+    ],
+    [
+     "SQS",
+     "No",
+     "<b>Yes</b>",
+     "Absorbs spikes, consumers catch up"
+    ],
+    [
+     "Kinesis Data Streams",
+     "No",
+     "<b>Yes</b>",
+     "Holds data for replay"
+    ],
+    [
+     "SNS",
+     "No",
+     "No",
+     "Pushes right away"
+    ]
+   ]
+  },
+  {
+   "type": "table",
+   "head": [
+    "API Gateway fact",
+    "Value"
+   ],
+   "rows": [
+    [
+     "Integration timeout",
+     "<b>29 s</b> default (Regional/private REST APIs can request more). Longer work → async with SQS or Step Functions"
+    ],
+    [
+     "Payload",
+     "10 MB"
+    ],
+    [
+     "Caching",
+     "Per stage, TTL default 300 s"
+    ],
+    [
+     "API types",
+     "REST (most features), HTTP (cheaper, simpler), WebSocket"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"rate-limit per customer\"",
+     "API Gateway usage plans + API keys"
+    ],
+    [
+     "\"traffic spikes must not be lost\"",
+     "Put SQS between the API and the backend"
+    ],
+    [
+     "\"request takes longer than 29 s\"",
+     "Make it async (SQS / Step Functions) and poll or notify"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Analytics: which service queries what?"
+  },
+  {
+   "type": "table",
+   "head": [
+    "Need",
+    "Service",
+    "Why"
+   ],
+   "rows": [
+    [
+     "SQL on files in S3, serverless, pay per query",
+     "<b>Athena</b>",
+     "Pays per TB scanned; Parquet/ORC + partitions scan less"
+    ],
+    [
+     "Data warehouse, complex joins, BI",
+     "<b>Redshift</b>",
+     "Columnar, MPP; Serverless for spiky use"
+    ],
+    [
+     "Redshift query on S3 without loading it",
+     "<b>Redshift Spectrum</b>",
+     "Join warehouse tables with S3 data"
+    ],
+    [
+     "ETL + schema catalog",
+     "<b>Glue</b>",
+     "Crawlers fill the Data Catalog; job bookmarks skip processed data"
+    ],
+    [
+     "Spark / Hadoop clusters",
+     "<b>EMR</b>",
+     "Big data frameworks you control"
+    ],
+    [
+     "Search and log dashboards",
+     "<b>OpenSearch</b>",
+     "Full-text search"
+    ],
+    [
+     "BI dashboards",
+     "<b>QuickSight</b>",
+     "Serverless BI"
+    ],
+    [
+     "Fine-grained data lake permissions",
+     "<b>Lake Formation</b>",
+     "Row and column level on the catalog"
+    ]
+   ]
+  },
+  {
+   "type": "traps",
+   "items": [
+    "Athena reads only the <b>columns and partitions</b> it needs when data is in Parquet/ORC and partitioned. That's the classic \"reduce Athena cost\" answer.",
+    "\"Query S3 <i>from Redshift</i>\" → Spectrum. \"Query S3, no warehouse\" → Athena."
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"ad hoc SQL on S3 logs\"",
+     "Athena"
+    ],
+    [
+     "\"reduce Athena cost/time\"",
+     "Parquet/ORC + partitioning + compression"
+    ],
+    [
+     "\"warehouse\" / \"OLAP\"",
+     "Redshift"
+    ],
+    [
+     "\"Spark\" / \"Hadoop\"",
+     "EMR"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "AI/ML: pick by input and output"
+  },
+  {
+   "type": "table",
+   "head": [
+    "In → out",
+    "Service"
+   ],
+   "rows": [
+    [
+     "Image/video → labels, faces, unsafe content",
+     "<b>Rekognition</b>"
+    ],
+    [
+     "Speech → text",
+     "<b>Transcribe</b>"
+    ],
+    [
+     "Text → speech",
+     "<b>Polly</b>"
+    ],
+    [
+     "Text → other language",
+     "<b>Translate</b>"
+    ],
+    [
+     "Text → sentiment, entities, PII",
+     "<b>Comprehend</b> (Medical for clinical text)"
+    ],
+    [
+     "Scanned document → text, forms, tables",
+     "<b>Textract</b>"
+    ],
+    [
+     "Chat or voice bot",
+     "<b>Lex</b> (call center: <b>Connect</b>)"
+    ],
+    [
+     "Search over company documents",
+     "<b>Kendra</b>"
+    ],
+    [
+     "Recommendations",
+     "<b>Personalize</b>"
+    ],
+    [
+     "Human review of low-confidence predictions",
+     "<b>Augmented AI (A2I)</b>"
+    ],
+    [
+     "Foundation models / generative AI",
+     "<b>Bedrock</b>"
+    ],
+    [
+     "Build and train your own model",
+     "<b>SageMaker</b>"
+    ],
+    [
+     "Time-series forecasting",
+     "<b>Forecast</b> on older questions. Closed to new customers since 2024; today: SageMaker Canvas"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"extract text from scanned forms\"",
+     "Textract"
+    ],
+    [
+     "\"detect PII in text\"",
+     "Comprehend"
+    ],
+    [
+     "\"subtitles\" / \"call transcripts\"",
+     "Transcribe"
+    ],
+    [
+     "\"moderate uploaded images\"",
+     "Rekognition"
+    ],
+    [
+     "\"LLM\" / \"foundation model\"",
+     "Bedrock"
+    ]
+   ]
+  }
+ ],
+ "questions": [
+  {
+   "id": "int-01",
+   "weak": "kinesis",
+   "q": "A ride-sharing app sends GPS updates from thousands of cars. Three teams need to process the same stream with their own custom applications, and must be able to replay the last 24 hours after a bug fix. What should be used?",
+   "options": [
+    {
+     "t": "Amazon Data Firehose to S3",
+     "why": "Firehose delivers to destinations. No custom consumers, no replay."
+    },
+    {
+     "t": "Kinesis Data Streams",
+     "why": "Right. Stored records, many custom consumers, replay within retention."
+    },
+    {
+     "t": "SQS standard queue",
+     "why": "Each message goes to one consumer and is deleted after processing."
+    },
+    {
+     "t": "SNS topic",
+     "why": "No storage, so no replay."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "int-02",
+   "weak": "kinesis",
+   "q": "A company wants clickstream data loaded into S3 in Parquet format for Athena, with the least operational overhead and no custom code. What should they use?",
+   "options": [
+    {
+     "t": "Kinesis Data Streams with a KCL consumer that writes Parquet",
+     "why": "Works, but you write and run the consumer."
+    },
+    {
+     "t": "Amazon Data Firehose with format conversion to Parquet",
+     "why": "Right. Fully managed delivery with built-in conversion."
+    },
+    {
+     "t": "SQS with Lambda writing to S3",
+     "why": "Custom code, and Lambda would need to batch and convert."
+    },
+    {
+     "t": "Amazon MQ",
+     "why": "A message broker for legacy protocols."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "int-03",
+   "weak": "kinesis",
+   "q": "Four consumer applications read from one Kinesis data stream and are falling behind because they share the read throughput of each shard. What fixes this with the least change?",
+   "options": [
+    {
+     "t": "Switch to Amazon Data Firehose",
+     "why": "Firehose doesn't support custom consumers."
+    },
+    {
+     "t": "Enable enhanced fan-out for the consumers",
+     "why": "Right. Each consumer gets its own 2 MB/s per shard, pushed."
+    },
+    {
+     "t": "Increase the retention period",
+     "why": "Retention doesn't add read throughput."
+    },
+    {
+     "t": "Put an SQS queue in front",
+     "why": "Changes the design and loses multi-consumer reads."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "int-04",
+   "weak": "kinesis",
+   "q": "Logs must reach Amazon OpenSearch Service within about a minute. A small Lambda function must mask emails first. The team wants a managed service with no servers. What fits best?",
+   "options": [
+    {
+     "t": "Firehose with a Lambda transformation, delivering to OpenSearch",
+     "why": "Right. Near real-time delivery with a built-in transform hook."
+    },
+    {
+     "t": "Kinesis Data Streams with consumers on EC2",
+     "why": "Servers to manage."
+    },
+    {
+     "t": "SQS FIFO",
+     "why": "No delivery to OpenSearch, and FIFO isn't needed."
+    },
+    {
+     "t": "EventBridge Scheduler",
+     "why": "For schedules, not log streams."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "int-05",
+   "fix": "firehose-buffer",
+   "q": "Firehose is delivering to S3 with a 60-second buffer. A dashboard needs data sooner, but the team doesn't want to manage consumers. What is true?",
+   "options": [
+    {
+     "t": "60 seconds is the minimum, so they must switch to Data Streams",
+     "why": "The minimum used to be 60 s. Firehose buffer intervals can now be set as low as 0 s."
+    },
+    {
+     "t": "They can lower the buffer interval, down to 0 seconds",
+     "why": "Right. Firehose is still described as near real time on the exam."
+    },
+    {
+     "t": "Firehose delivers in real time by default",
+     "why": "It buffers by size or time."
+    },
+    {
+     "t": "Only SQS can deliver faster",
+     "why": "SQS doesn't deliver to S3."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "int-06",
+   "weak": "eventbridge-saas",
+   "q": "Support tickets created in Zendesk must trigger a Lambda function in AWS. What is the most direct way to receive these events?",
+   "options": [
+    {
+     "t": "An SQS queue subscribed to Zendesk",
+     "why": "SQS has no SaaS partner sources."
+    },
+    {
+     "t": "An SNS topic that Zendesk publishes to",
+     "why": "SNS has no native SaaS partner integration."
+    },
+    {
+     "t": "An EventBridge partner event source and a rule targeting Lambda",
+     "why": "Right. Zendesk is a SaaS partner; events arrive on a partner event bus."
+    },
+    {
+     "t": "AppFlow",
+     "why": "AppFlow copies data in batches; it doesn't route events to Lambda."
+    }
+   ],
+   "answer": [
+    2
+   ]
+  },
+  {
+   "id": "int-07",
+   "weak": "eventbridge-saas",
+   "q": "Every night at 02:00 a Lambda function must start a cleanup job. What is the simplest serverless way to schedule it?",
+   "options": [
+    {
+     "t": "A cron job on an EC2 instance",
+     "why": "A server to run and patch."
+    },
+    {
+     "t": "EventBridge Scheduler (or a scheduled EventBridge rule)",
+     "why": "Right. Serverless cron that invokes Lambda."
+    },
+    {
+     "t": "SQS delay queue",
+     "why": "Max delay is 15 minutes."
+    },
+    {
+     "t": "SNS",
+     "why": "SNS has no schedules."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "int-08",
+   "q": "An order service publishes events. The billing, shipping and analytics services each need every order, and each must be able to process at its own pace even if it is down for an hour. What is the best design?",
+   "options": [
+    {
+     "t": "One SQS queue read by all three",
+     "why": "Each message is delivered to only one of them."
+    },
+    {
+     "t": "SNS topic fanning out to three SQS queues",
+     "why": "Right. Every service gets a copy and its own queue as a buffer."
+    },
+    {
+     "t": "SNS topic with three Lambda subscribers",
+     "why": "No buffer if a consumer is down for an hour."
+    },
+    {
+     "t": "Three direct API calls from the order service",
+     "why": "Tight coupling, and failures need custom retries."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "int-09",
+   "q": "An SNS topic fans out to several SQS queues. The refunds queue should only receive messages where type = \"refund\". How should this be done with the least effort?",
+   "options": [
+    {
+     "t": "Filter in the refunds consumer and drop the rest",
+     "why": "Works, but wastes processing and cost."
+    },
+    {
+     "t": "Add a subscription filter policy on the refunds queue's subscription",
+     "why": "Right. SNS only delivers matching messages."
+    },
+    {
+     "t": "Create a separate topic per type",
+     "why": "More topics and publisher changes."
+    },
+    {
+     "t": "Use SQS FIFO",
+     "why": "Order isn't the problem."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "int-10",
+   "q": "Workers sometimes process the same SQS message twice. Processing takes about 2 minutes. What is the most likely cause?",
+   "options": [
+    {
+     "t": "The delay is too long",
+     "why": "Delay only affects first delivery."
+    },
+    {
+     "t": "The visibility timeout (30 s) is shorter than the processing time",
+     "why": "Right. The message reappears before the worker deletes it."
+    },
+    {
+     "t": "Long polling is enabled",
+     "why": "Long polling doesn't cause duplicates."
+    },
+    {
+     "t": "The retention period is too short",
+     "why": "That would lose messages, not duplicate them."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "int-11",
+   "q": "An e-commerce app must process each customer's order events in order, but different customers' events should be processed in parallel. What should be used?",
+   "options": [
+    {
+     "t": "SQS standard queue",
+     "why": "No ordering guarantee."
+    },
+    {
+     "t": "SQS FIFO queue with the customer ID as the message group ID",
+     "why": "Right. Ordered per group, parallel across groups."
+    },
+    {
+     "t": "SQS FIFO queue with one message group ID for everything",
+     "why": "Strict order, but only one at a time."
+    },
+    {
+     "t": "SNS standard topic",
+     "why": "No ordering guarantee."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "int-12",
+   "fix": "sqs-size",
+   "q": "An application must send 5 MB documents through SQS. What should the architect do?",
+   "options": [
+    {
+     "t": "Raise the queue's maximum message size to 5 MB",
+     "why": "The limit is 1 MiB (it was 256 KB until 2025)."
+    },
+    {
+     "t": "Use the SQS Extended Client Library to store the payload in S3 and send a pointer",
+     "why": "Right. The standard pattern for large payloads."
+    },
+    {
+     "t": "Use SNS instead",
+     "why": "SNS has the same kind of size limit."
+    },
+    {
+     "t": "Split each document into many messages without tracking",
+     "why": "Reassembly and ordering become your problem."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "int-13",
+   "q": "A public REST API sometimes gets 10x traffic spikes that overwhelm the backend workers. No requests may be lost. What should the architect add?",
+   "options": [
+    {
+     "t": "API Gateway throttling",
+     "why": "Throttling rejects requests with 429, so they're lost unless clients retry."
+    },
+    {
+     "t": "An SQS queue between API Gateway and the workers",
+     "why": "Right. The queue buffers the spike and workers catch up."
+    },
+    {
+     "t": "SNS between API Gateway and the workers",
+     "why": "SNS pushes right away and doesn't buffer."
+    },
+    {
+     "t": "A larger Lambda timeout",
+     "why": "Doesn't absorb a spike."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "int-14",
+   "fix": "apigw-timeout",
+   "q": "A report endpoint behind API Gateway sometimes takes 2 minutes to finish. Clients get timeouts. What is the best design?",
+   "options": [
+    {
+     "t": "Raise the Lambda timeout to 15 minutes",
+     "why": "API Gateway still times out at 29 s by default."
+    },
+    {
+     "t": "Make it asynchronous: accept the request, queue the work (SQS or Step Functions), and let clients poll or get notified",
+     "why": "Right. The classic exam answer for long work behind an API."
+    },
+    {
+     "t": "Increase the API Gateway integration timeout for all API types",
+     "why": "Only Regional/private REST APIs can request a higher limit now, and the exam answer is still 29 s + async."
+    },
+    {
+     "t": "Switch to an NLB",
+     "why": "Changes the front door but not the design problem."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "int-15",
+   "q": "A SaaS company sells API access. Each customer must have its own request quota and rate limit. What should be used?",
+   "options": [
+    {
+     "t": "API Gateway usage plans with API keys",
+     "why": "Right. Per-customer throttling and quotas."
+    },
+    {
+     "t": "WAF rate-based rules",
+     "why": "Rate-limits by IP, not by customer plan."
+    },
+    {
+     "t": "SQS per customer",
+     "why": "Doesn't limit request rates."
+    },
+    {
+     "t": "Lambda reserved concurrency per customer",
+     "why": "Not tied to customer identity."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "int-16",
+   "q": "A company runs an on-premises app that uses ActiveMQ with the AMQP protocol and wants to move it to AWS without code changes. What should they use?",
+   "options": [
+    {
+     "t": "Amazon SQS",
+     "why": "Would need code changes; SQS doesn't speak AMQP."
+    },
+    {
+     "t": "Amazon MQ",
+     "why": "Right. Managed ActiveMQ/RabbitMQ with standard protocols."
+    },
+    {
+     "t": "Amazon Kinesis",
+     "why": "Different model and API."
+    },
+    {
+     "t": "Amazon SNS",
+     "why": "Different model and API."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "int-17",
+   "fix": "athena-partial",
+   "q": "An analyst runs Athena queries on CSV logs in S3 and the bill is high. Which TWO changes cut cost the most?",
+   "multi": true,
+   "options": [
+    {
+     "t": "Convert the data to Parquet",
+     "why": "Right. Columnar: Athena reads only the columns a query needs."
+    },
+    {
+     "t": "Partition the data by date and filter on it",
+     "why": "Right. Athena skips partitions it doesn't need."
+    },
+    {
+     "t": "Move the data to EBS",
+     "why": "Athena reads S3."
+    },
+    {
+     "t": "Use larger CSV files only",
+     "why": "Helps a little, but the big wins are columnar format and partitions."
+    },
+    {
+     "t": "Run queries from an EC2 instance",
+     "why": "Athena is serverless; that changes nothing."
+    }
+   ],
+   "answer": [
+    0,
+    1
+   ]
+  },
+  {
+   "id": "int-18",
+   "q": "A company keeps 2 years of hot data in Redshift and 8 years of history in S3. Analysts must join both in single queries without loading the history into Redshift. What should they use?",
+   "options": [
+    {
+     "t": "Athena",
+     "why": "Can query S3, but not join with Redshift tables in one query."
+    },
+    {
+     "t": "Redshift Spectrum",
+     "why": "Right. Redshift queries S3 data in place and joins it."
+    },
+    {
+     "t": "EMR",
+     "why": "Possible, but heavier and not Redshift."
+    },
+    {
+     "t": "Glue crawlers only",
+     "why": "They catalog data; they don't run the query."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "int-19",
+   "q": "A bank must process scanned loan applications: extract form fields, detect personal information in the text, and send low-confidence results to people for review. Which combination fits?",
+   "options": [
+    {
+     "t": "Rekognition + Translate + Lex",
+     "why": "Rekognition is for images and faces, not form fields."
+    },
+    {
+     "t": "Textract + Comprehend + Augmented AI (A2I)",
+     "why": "Right. Extract, analyze text for PII, human review."
+    },
+    {
+     "t": "Transcribe + Polly + SageMaker",
+     "why": "Those handle audio."
+    },
+    {
+     "t": "Kendra + Personalize + Bedrock",
+     "why": "Search, recommendations and generative AI."
+    }
+   ],
+   "answer": [
+    1
+   ]
+  },
+  {
+   "id": "int-20",
+   "fix": "forecast",
+   "q": "A retailer wants demand forecasts from 3 years of daily sales data. The question offers these options. Which is the expected answer on older exam questions, and what should a new project use today?",
+   "options": [
+    {
+     "t": "Amazon Forecast on the exam; SageMaker (e.g., Canvas) for a new project",
+     "why": "Right. Forecast closed to new customers in 2024, but older questions still use it."
+    },
+    {
+     "t": "Amazon Personalize in both cases",
+     "why": "Personalize is for recommendations."
+    },
+    {
+     "t": "Amazon Comprehend in both cases",
+     "why": "Comprehend analyzes text."
+    },
+    {
+     "t": "Redshift in both cases",
+     "why": "A warehouse stores data; it doesn't forecast."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  }
+ ],
+ "drills": [
+  {
+   "id": "kds-or-firehose",
+   "type": "thisorthat",
+   "title": "Data Streams or Firehose?",
+   "intro": "60 seconds. Tap the service the line describes.",
+   "a": "Kinesis Data Streams",
+   "b": "Data Firehose",
+   "seconds": 60,
+   "items": [
+    {
+     "t": "Custom consumer applications",
+     "ans": "a"
+    },
+    {
+     "t": "Load into S3 with no code",
+     "ans": "b"
+    },
+    {
+     "t": "Replay the last 7 days",
+     "ans": "a"
+    },
+    {
+     "t": "Convert JSON to Parquet on the way",
+     "ans": "b"
+    },
+    {
+     "t": "Shards",
+     "ans": "a"
+    },
+    {
+     "t": "Deliver to Redshift or OpenSearch",
+     "ans": "b"
+    },
+    {
+     "t": "Enhanced fan-out",
+     "ans": "a"
+    },
+    {
+     "t": "Near real time with buffering",
+     "ans": "b"
+    },
+    {
+     "t": "Several apps read the same data at their own pace",
+     "ans": "a"
+    },
+    {
+     "t": "No storage at all",
+     "ans": "b"
+    },
+    {
+     "t": "Retention up to 365 days",
+     "ans": "a"
+    },
+    {
+     "t": "\"Easiest way to get streaming data into S3\"",
+     "ans": "b"
+    }
+   ]
+  },
+  {
+   "id": "msg-buckets",
+   "type": "buckets",
+   "title": "SQS, SNS or EventBridge?",
+   "intro": "Tap a scenario, then the service.",
+   "buckets": [
+    "SQS",
+    "SNS",
+    "EventBridge"
+   ],
+   "items": [
+    {
+     "t": "Workers pull jobs at their own pace",
+     "b": 0
+    },
+    {
+     "t": "Text and email alerts to many subscribers",
+     "b": 1
+    },
+    {
+     "t": "React to Salesforce or Zendesk events",
+     "b": 2,
+     "why": "SaaS partner event sources only exist in EventBridge."
+    },
+    {
+     "t": "Run a Lambda every day at 2 am",
+     "b": 2
+    },
+    {
+     "t": "Absorb a traffic spike before slow workers",
+     "b": 0
+    },
+    {
+     "t": "Copy one order event to 3 queues",
+     "b": 1
+    },
+    {
+     "t": "Route events by fields inside the JSON to different targets",
+     "b": 2
+    },
+    {
+     "t": "Ordered processing per customer",
+     "b": 0
+    }
+   ]
+  },
+  {
+   "id": "ml-match",
+   "type": "match",
+   "title": "Match the AI service",
+   "intro": "Tap a service, then its job.",
+   "pairs": [
+    [
+     "Textract",
+     "Pull fields and tables out of scanned forms"
+    ],
+    [
+     "Comprehend",
+     "Find sentiment and PII in text"
+    ],
+    [
+     "Rekognition",
+     "Flag unsafe images users upload"
+    ],
+    [
+     "Transcribe",
+     "Turn call recordings into text"
+    ],
+    [
+     "Polly",
+     "Read articles aloud"
+    ],
+    [
+     "Kendra",
+     "Search across company documents"
+    ],
+    [
+     "Bedrock",
+     "Use foundation models without managing them"
+    ]
+   ]
+  },
+  {
+   "id": "int-keywords",
+   "type": "keyword",
+   "title": "Spot the keyword",
+   "intro": "Tap the phrase that decides the answer.",
+   "items": [
+    {
+     "parts": [
+      "IoT sensors stream readings",
+      "that two teams process",
+      "with their own applications",
+      "and sometimes replay."
+     ],
+     "key": 2,
+     "answer": "Kinesis Data Streams",
+     "why": "Custom applications reading the stream rule out Firehose."
+    },
+    {
+     "parts": [
+      "Web logs must land in S3",
+      "as Parquet,",
+      "with the least operational overhead",
+      "for Athena queries."
+     ],
+     "key": 2,
+     "answer": "Data Firehose",
+     "why": "Least overhead + deliver to S3 = Firehose."
+    },
+    {
+     "parts": [
+      "New tickets in a SaaS help desk",
+      "must trigger",
+      "an AWS workflow",
+      "within seconds."
+     ],
+     "key": 0,
+     "answer": "EventBridge",
+     "why": "SaaS events arrive through EventBridge partner sources."
+    },
+    {
+     "parts": [
+      "An API gets sudden spikes",
+      "and the backend is slow,",
+      "but no request",
+      "may be lost."
+     ],
+     "key": 2,
+     "answer": "SQS buffer",
+     "why": "Throttling would drop requests; a queue keeps them."
+    },
+    {
+     "parts": [
+      "A legacy app",
+      "uses RabbitMQ over AMQP",
+      "and must move to AWS",
+      "without code changes."
+     ],
+     "key": 1,
+     "answer": "Amazon MQ",
+     "why": "Standard broker protocols mean Amazon MQ."
+    }
+   ]
+  }
+ ]
+}
