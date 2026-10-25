@@ -10,6 +10,7 @@ Free, public study notes + quizzes + drills for the AWS SAA-C03 exam, built from
 ## Where things live
 - `index.html`: the whole engine (CSS + JS). Content never goes here.
 - `content/manifest.json`: section list; a section shows when `"built": true, "file": "content/<id>.json"`.
+- `manifest.json` `extras`: cross-section pages (e.g. `mixups`) that use the section format; see ADR 0003.
 - `content/<id>.json`: one section = `notes` blocks + `questions` + `drills`. `content/edge.json` is the reference.
 - `content/weakspots.json`, `content/corrections.json`: Amr's weak spots and the fixes to his old guide.
 - `content/diagrams/*.svg`: inlined at runtime; use the `.dg-*` classes so all 3 styles × 2 modes work.

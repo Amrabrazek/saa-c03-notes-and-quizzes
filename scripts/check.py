@@ -32,6 +32,7 @@ for f in fixes.values():
 
 wanted = sys.argv[1:]
 targets = [s for s in manifest["sections"] if (s["id"] in wanted if wanted else s.get("built"))]
+targets += [s for s in manifest.get("extras", []) if not wanted or s["id"] in wanted]
 seen_ids = set()
 
 for s in targets:

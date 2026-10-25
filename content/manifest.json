@@ -71,5 +71,14 @@
       "built": true,
       "file": "content/ops.json"
     }
+  ],
+  "extras": [
+    {
+      "id": "mixups",
+      "num": "⇄",
+      "title": "Mix-ups",
+      "eyebrow": "Across sections",
+      "file": "content/mixups.json"
+    }
   ]
 }

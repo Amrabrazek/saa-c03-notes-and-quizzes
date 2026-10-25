@@ -1,0 +1,1333 @@
+{
+ "id": "mixups",
+ "title": "Mix-ups",
+ "oneLiner": "The services the exam puts side by side. Each group has <b>one rule</b> to tell them apart, a table of when each one isn't the answer, and a quiz that mixes them all.",
+ "notes": [
+  {
+   "type": "h2",
+   "text": "Security findings: who finds what"
+  },
+  {
+   "type": "p",
+   "html": "One rule: <b>GuardDuty spots threats, Inspector spots vulnerabilities, Macie spots sensitive data, Security Hub collects them all</b>."
+  },
+  {
+   "type": "table",
+   "head": [
+    "Service",
+    "It answers",
+    "Not this when"
+   ],
+   "rows": [
+    [
+     "<b>GuardDuty</b>",
+     "Threats from CloudTrail, VPC Flow Logs, DNS logs: crypto-mining, odd API calls, known bad IPs",
+     "You want to scan software for CVEs (Inspector)"
+    ],
+    [
+     "<b>Inspector</b>",
+     "Vulnerabilities (CVEs) and network exposure on EC2, ECR images, Lambda",
+     "You want to detect an attack in progress (GuardDuty)"
+    ],
+    [
+     "<b>Macie</b>",
+     "PII and sensitive data in <b>S3</b>",
+     "Data lives in RDS or EBS"
+    ],
+    [
+     "<b>Security Hub</b>",
+     "One place for findings from all of the above, plus best-practice standards (CIS, AWS FSBP)",
+     "You need the detection itself; it aggregates"
+    ],
+    [
+     "<b>Detective</b>",
+     "Investigate a finding's root cause with a graph of activity",
+     "You need detection; it's for after a finding"
+    ],
+    [
+     "<b>Config</b>",
+     "Is a resource configured to my rules, and how did it change?",
+     "You need who made the call (CloudTrail)"
+    ],
+    [
+     "<b>CloudTrail</b>",
+     "Who called which API, when, from where",
+     "You need resource compliance over time (Config)"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"compromised instance\" / \"crypto-mining\"",
+     "GuardDuty"
+    ],
+    [
+     "\"scan for CVEs\"",
+     "Inspector"
+    ],
+    [
+     "\"PII in S3\"",
+     "Macie"
+    ],
+    [
+     "\"single dashboard of findings\"",
+     "Security Hub"
+    ],
+    [
+     "\"root cause of a finding\"",
+     "Detective"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Secrets, keys and certificates"
+  },
+  {
+   "type": "p",
+   "html": "One rule: <b>Secrets Manager if it must rotate, Parameter Store if it's config, KMS for keys, CloudHSM only when you must own the HSM, ACM for TLS</b>."
+  },
+  {
+   "type": "table",
+   "head": [
+    "Service",
+    "It answers",
+    "Not this when"
+   ],
+   "rows": [
+    [
+     "<b>Secrets Manager</b>",
+     "Passwords and API keys with <b>built-in rotation</b> (RDS native), cross-region replicas",
+     "Plain config values; it costs per secret"
+    ],
+    [
+     "<b>Parameter Store</b>",
+     "Config and secrets in a hierarchy; standard tier is free",
+     "Rotation is required (no built-in rotation)"
+    ],
+    [
+     "<b>KMS</b>",
+     "Encryption keys used by AWS services, envelope encryption, key policies",
+     "You need a single-tenant HSM under your sole control"
+    ],
+    [
+     "<b>CloudHSM</b>",
+     "Dedicated HSM you manage; custom crypto, Oracle TDE",
+     "Normal service encryption (KMS is simpler)"
+    ],
+    [
+     "<b>ACM</b>",
+     "Free public TLS certificates, auto-renewal, on ALB/CloudFront/API Gateway",
+     "TLS directly on EC2: the classic answer is that you can't install them there (exportable public certs exist since 2025, for a fee)"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"rotate DB credentials automatically\"",
+     "Secrets Manager"
+    ],
+    [
+     "\"store config, low cost\"",
+     "Parameter Store"
+    ],
+    [
+     "\"single-tenant HSM\"",
+     "CloudHSM"
+    ],
+    [
+     "\"HTTPS certificate on CloudFront\"",
+     "ACM in us-east-1"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Messaging and streaming"
+  },
+  {
+   "type": "p",
+   "html": "One rule: <b>SQS buffers for one consumer, SNS fans out, EventBridge routes by content, Kinesis streams in order with replay, Firehose loads with no code</b>."
+  },
+  {
+   "type": "table",
+   "head": [
+    "Service",
+    "It answers",
+    "Not this when"
+   ],
+   "rows": [
+    [
+     "<b>SQS</b>",
+     "Decouple and buffer; consumers pull; each message processed once",
+     "Many consumers each need every message"
+    ],
+    [
+     "<b>SNS</b>",
+     "Push one message to many subscribers (fan-out, often to SQS)",
+     "Messages must wait for a slow consumer"
+    ],
+    [
+     "<b>EventBridge</b>",
+     "Route events by content to targets; SaaS sources; schedules",
+     "High-throughput ordered streams"
+    ],
+    [
+     "<b>Kinesis Data Streams</b>",
+     "Real-time, ordered per shard, replay, many consumers",
+     "You just want data landed in S3 (Firehose)"
+    ],
+    [
+     "<b>Data Firehose</b>",
+     "Load streams into S3, Redshift, OpenSearch, Splunk; buffers; no code",
+     "Sub-second processing or replay"
+    ],
+    [
+     "<b>Amazon MQ</b>",
+     "Existing apps on AMQP, MQTT, JMS, STOMP",
+     "New cloud-native apps (use SQS/SNS)"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"decouple\" + \"buffer\"",
+     "SQS"
+    ],
+    [
+     "\"fan-out\"",
+     "SNS → SQS"
+    ],
+    [
+     "\"real-time\" + \"replay\" + \"multiple consumers\"",
+     "Kinesis Data Streams"
+    ],
+    [
+     "\"load into S3/Redshift\" + \"no code\"",
+     "Firehose"
+    ],
+    [
+     "\"existing app uses JMS/AMQP\"",
+     "Amazon MQ"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Moving data and servers"
+  },
+  {
+   "type": "p",
+   "html": "One rule: <b>name what you're moving</b>: files online, files over time with on-prem access, files by truck, files over SFTP, databases, or whole servers."
+  },
+  {
+   "type": "table",
+   "head": [
+    "Service",
+    "It answers",
+    "Not this when"
+   ],
+   "rows": [
+    [
+     "<b>DataSync</b>",
+     "One-time or scheduled online copy of files (NFS, SMB, HDFS, S3, EFS, FSx)",
+     "On-prem apps need ongoing local access (Storage Gateway)"
+    ],
+    [
+     "<b>Storage Gateway</b>",
+     "On-prem apps keep using files, volumes or tapes backed by AWS",
+     "A one-off migration (DataSync)"
+    ],
+    [
+     "<b>Snowball Edge</b>",
+     "Terabytes to petabytes offline; edge compute",
+     "The link can move it in days"
+    ],
+    [
+     "<b>Transfer Family</b>",
+     "Partners send files over SFTP/FTPS/FTP/AS2 into S3 or EFS",
+     "Bulk migration"
+    ],
+    [
+     "<b>DMS</b>",
+     "Databases (and S3 → Kinesis) with CDC, minimal downtime",
+     "Whole servers (MGN)"
+    ],
+    [
+     "<b>MGN</b>",
+     "Lift-and-shift whole servers to EC2",
+     "Only a database"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"migrate NFS share online\"",
+     "DataSync"
+    ],
+    [
+     "\"on-prem keeps local cache\"",
+     "Storage Gateway"
+    ],
+    [
+     "\"PB + slow link\"",
+     "Snowball Edge"
+    ],
+    [
+     "\"partners use SFTP\"",
+     "Transfer Family"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Global traffic"
+  },
+  {
+   "type": "p",
+   "html": "One rule: <b>CloudFront caches HTTP at the edge; Global Accelerator gives two static anycast IPs and fast failover for any TCP/UDP; Route 53 picks by DNS</b>."
+  },
+  {
+   "type": "table",
+   "head": [
+    "Service",
+    "It answers",
+    "Not this when"
+   ],
+   "rows": [
+    [
+     "<b>CloudFront</b>",
+     "Cache static and dynamic HTTP(S) content close to users; WAF; signed URLs",
+     "Non-HTTP (UDP gaming, MQTT)"
+    ],
+    [
+     "<b>Global Accelerator</b>",
+     "2 static anycast IPs, AWS backbone, failover in seconds, TCP/UDP",
+     "You want content cached (it doesn't cache)"
+    ],
+    [
+     "<b>Route 53 latency/failover</b>",
+     "Send users to the best region by DNS",
+     "Failover must ignore client DNS caching (TTL)"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"cache\" + \"global users\"",
+     "CloudFront"
+    ],
+    [
+     "\"static IP\" + \"multi-region\" + \"UDP\"",
+     "Global Accelerator"
+    ],
+    [
+     "\"fast regional failover\" without DNS TTL",
+     "Global Accelerator"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Connecting networks"
+  },
+  {
+   "type": "p",
+   "html": "One rule: <b>peering for a few VPCs, Transit Gateway for many, PrivateLink to expose one service, endpoints to reach AWS services privately, VPN fast, Direct Connect consistent</b>."
+  },
+  {
+   "type": "table",
+   "head": [
+    "Service",
+    "It answers",
+    "Not this when"
+   ],
+   "rows": [
+    [
+     "<b>VPC peering</b>",
+     "A few VPCs, no extra hop, cheap",
+     "Many VPCs (not transitive), overlapping CIDRs"
+    ],
+    [
+     "<b>Transit Gateway</b>",
+     "Hub for many VPCs and on-prem; transitive routing",
+     "Just exposing one service"
+    ],
+    [
+     "<b>PrivateLink</b>",
+     "One service to many VPCs/accounts; overlapping CIDRs fine",
+     "Full network-to-network routing"
+    ],
+    [
+     "<b>Gateway endpoint</b>",
+     "S3 and DynamoDB from private subnets; free; route table entry",
+     "Any other service, or access from on-prem"
+    ],
+    [
+     "<b>Interface endpoint</b>",
+     "Other AWS services (and S3) through an ENI; works from on-prem over DX/VPN",
+     "Lowest cost S3 access within the VPC (gateway is free)"
+    ],
+    [
+     "<b>Site-to-Site VPN</b>",
+     "Encrypted over the internet; up in minutes",
+     "Consistent bandwidth and latency"
+    ],
+    [
+     "<b>Direct Connect</b>",
+     "Private, consistent link; weeks to set up",
+     "Needed this week, or encryption by default (add VPN or MACsec)"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"hundreds of VPCs\"",
+     "Transit Gateway"
+    ],
+    [
+     "\"overlapping CIDRs\" + share a service",
+     "PrivateLink"
+    ],
+    [
+     "\"S3 from private subnet, no cost\"",
+     "Gateway endpoint"
+    ],
+    [
+     "\"consistent network performance\"",
+     "Direct Connect"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Querying and analytics"
+  },
+  {
+   "type": "p",
+   "html": "One rule: <b>Athena for ad-hoc SQL on S3, Redshift for a warehouse, EMR for Spark/Hadoop you tune, Glue for serverless ETL and the catalog, OpenSearch for search and logs</b>."
+  },
+  {
+   "type": "table",
+   "head": [
+    "Service",
+    "It answers",
+    "Not this when"
+   ],
+   "rows": [
+    [
+     "<b>Athena</b>",
+     "Serverless SQL on S3, pay per data scanned",
+     "Heavy repeated BI joins all day (Redshift)"
+    ],
+    [
+     "<b>Redshift</b>",
+     "Data warehouse; complex joins; BI; Spectrum queries S3 too",
+     "Occasional queries on S3 (Athena is cheaper)"
+    ],
+    [
+     "<b>EMR</b>",
+     "Managed Spark, Hadoop, Hive, Presto clusters",
+     "Least management ETL (Glue)"
+    ],
+    [
+     "<b>Glue</b>",
+     "Serverless ETL; Data Catalog; crawlers",
+     "Interactive SQL (Athena)"
+    ],
+    [
+     "<b>OpenSearch</b>",
+     "Full-text search, log analytics, dashboards",
+     "Relational reporting"
+    ],
+    [
+     "<b>QuickSight</b>",
+     "BI dashboards",
+     "Running the queries themselves"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"query logs in S3\" + \"serverless\"",
+     "Athena"
+    ],
+    [
+     "\"data warehouse\"",
+     "Redshift"
+    ],
+    [
+     "\"Spark\" + \"control\"",
+     "EMR"
+    ],
+    [
+     "\"full-text search\"",
+     "OpenSearch"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Who gets access"
+  },
+  {
+   "type": "p",
+   "html": "One rule: <b>SCPs and permission boundaries only cap; IAM and resource policies grant; Identity Center is for your staff, Cognito for your app's users</b>."
+  },
+  {
+   "type": "table",
+   "head": [
+    "Service",
+    "It answers",
+    "Not this when"
+   ],
+   "rows": [
+    [
+     "<b>SCP</b>",
+     "Cap what accounts in an Organization can ever do",
+     "Granting access (it never grants)"
+    ],
+    [
+     "<b>Permission boundary</b>",
+     "Cap what one user or role can get, e.g. for delegated admins",
+     "Limiting a whole account (SCP)"
+    ],
+    [
+     "<b>Resource policy</b>",
+     "Let another account or service reach a resource (S3, KMS, SQS)",
+     "Granting to your own users broadly (identity policy)"
+    ],
+    [
+     "<b>IAM Identity Center</b>",
+     "Workforce SSO into many accounts and apps",
+     "Customers of your app"
+    ],
+    [
+     "<b>Cognito user pool</b>",
+     "Sign-up and sign-in for app users; JWTs",
+     "Users need AWS credentials (identity pool)"
+    ],
+    [
+     "<b>Cognito identity pool</b>",
+     "Swap a login for temporary AWS credentials (e.g. upload to S3)",
+     "Just authenticating to your API (user pool)"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"prevent any account from leaving a region\"",
+     "SCP"
+    ],
+    [
+     "\"let developers create roles but not exceed X\"",
+     "Permission boundary"
+    ],
+    [
+     "\"employees sign in once to all accounts\"",
+     "IAM Identity Center"
+    ],
+    [
+     "\"mobile users upload directly to S3\"",
+     "Cognito identity pool"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Running code without servers"
+  },
+  {
+   "type": "p",
+   "html": "One rule: <b>Lambda for short events, Fargate for containers that run longer, App Runner for a web app with the least setup, Batch for queued jobs, Step Functions to chain the steps</b>."
+  },
+  {
+   "type": "table",
+   "head": [
+    "Service",
+    "It answers",
+    "Not this when"
+   ],
+   "rows": [
+    [
+     "<b>Lambda</b>",
+     "Event-driven, up to 15 minutes",
+     "Long-running or always-on processes"
+    ],
+    [
+     "<b>Fargate</b>",
+     "Containers on ECS/EKS, no servers",
+     "Simplest possible web app deploy (App Runner)"
+    ],
+    [
+     "<b>App Runner</b>",
+     "Web app or API from source or image, with TLS and scaling built in",
+     "Fine-grained networking or batch jobs"
+    ],
+    [
+     "<b>AWS Batch</b>",
+     "Queued batch jobs on EC2, Spot or Fargate",
+     "Request/response APIs"
+    ],
+    [
+     "<b>Step Functions</b>",
+     "Orchestrate steps with retries, branching, waits, human approval",
+     "Simple one-step triggers"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"runs 3 hours\" + serverless",
+     "Fargate or Batch on Fargate"
+    ],
+    [
+     "\"coordinate several Lambdas with retries\"",
+     "Step Functions"
+    ],
+    [
+     "\"deploy a container web app, least ops\"",
+     "App Runner"
+    ]
+   ]
+  }
+ ],
+ "questions": [
+  {
+   "id": "gd-mining",
+   "q": "An EC2 instance is suspected of <b>crypto-mining</b> and calling known malicious IPs. Which service detects this with the <b>least setup</b>?",
+   "options": [
+    {
+     "t": "GuardDuty",
+     "why": "Threat detection from flow logs, DNS and CloudTrail; one click to enable."
+    },
+    {
+     "t": "Inspector",
+     "why": "Finds vulnerabilities, not active threats."
+    },
+    {
+     "t": "Macie",
+     "why": "Sensitive data in S3."
+    },
+    {
+     "t": "Config",
+     "why": "Configuration compliance, not behavior."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "insp-cve",
+   "q": "Security must continuously scan EC2 instances and <b>container images in ECR</b> for known CVEs.",
+   "options": [
+    {
+     "t": "Amazon Inspector",
+     "why": "Vulnerability scanning for EC2, ECR and Lambda."
+    },
+    {
+     "t": "GuardDuty",
+     "why": "Detects threats, doesn't scan packages."
+    },
+    {
+     "t": "Security Hub",
+     "why": "Shows findings from scanners; it doesn't scan itself."
+    },
+    {
+     "t": "Detective",
+     "why": "Investigates findings after the fact."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "macie-pii",
+   "q": "A company must find buckets that contain <b>credit card numbers and passport data</b>.",
+   "options": [
+    {
+     "t": "Macie",
+     "why": "Discovers sensitive data in S3."
+    },
+    {
+     "t": "GuardDuty S3 protection",
+     "why": "Detects suspicious access, not data contents."
+    },
+    {
+     "t": "Inspector",
+     "why": "Software vulnerabilities."
+    },
+    {
+     "t": "S3 Storage Lens",
+     "why": "Usage and activity metrics."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "hub",
+   "q": "Findings from GuardDuty, Inspector and Macie across 40 accounts must appear in <b>one place</b> with compliance scores.",
+   "options": [
+    {
+     "t": "Security Hub with a delegated administrator",
+     "why": "Aggregates findings and runs standards across the Organization."
+    },
+    {
+     "t": "Detective",
+     "why": "Investigation graphs, not an aggregated dashboard."
+    },
+    {
+     "t": "CloudTrail Lake",
+     "why": "API events, not security findings."
+    },
+    {
+     "t": "Config aggregator",
+     "why": "Config compliance only, not GuardDuty or Macie findings."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "sm-vs-ps",
+   "q": "Database passwords must <b>rotate every 30 days automatically</b> with the <b>least custom code</b>.",
+   "options": [
+    {
+     "t": "Secrets Manager with managed rotation",
+     "why": "Rotation built in for RDS."
+    },
+    {
+     "t": "Parameter Store SecureString",
+     "why": "No built-in rotation; you'd write a Lambda."
+    },
+    {
+     "t": "KMS automatic key rotation",
+     "why": "Rotates the key, not the password."
+    },
+    {
+     "t": "Store in S3 with a lifecycle rule",
+     "why": "Lifecycle doesn't rotate secrets."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "ps-config",
+   "q": "An app needs feature flags and endpoint URLs per environment, at the <b>lowest cost</b>. Nothing needs rotation.",
+   "options": [
+    {
+     "t": "Parameter Store standard parameters",
+     "why": "Free, hierarchical, and IAM-controlled."
+    },
+    {
+     "t": "Secrets Manager",
+     "why": "Billed per secret; rotation isn't needed."
+    },
+    {
+     "t": "CloudHSM",
+     "why": "Key storage, not config."
+    },
+    {
+     "t": "DynamoDB table",
+     "why": "Works, but more to build than Parameter Store."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "hsm",
+   "q": "Regulations require encryption keys in a <b>single-tenant HSM that only the company controls</b>.",
+   "options": [
+    {
+     "t": "CloudHSM",
+     "why": "Dedicated HSM; AWS can't access the keys."
+    },
+    {
+     "t": "KMS with customer managed keys",
+     "why": "Multi-tenant service operated by AWS."
+    },
+    {
+     "t": "Secrets Manager",
+     "why": "Secrets, not an HSM."
+    },
+    {
+     "t": "ACM",
+     "why": "TLS certificates."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "fanout",
+   "q": "One order event must reach a billing service, a shipping service and an analytics queue, <b>each getting every message</b>, and survive slow consumers.",
+   "options": [
+    {
+     "t": "SNS topic fanning out to an SQS queue per service",
+     "why": "Fan-out plus a buffer for each consumer."
+    },
+    {
+     "t": "One SQS queue shared by all three",
+     "why": "Each message would go to only one consumer."
+    },
+    {
+     "t": "Direct HTTP calls from the order service",
+     "why": "Tight coupling, no buffering."
+    },
+    {
+     "t": "Firehose to S3",
+     "why": "Delivers to storage, not services."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "kds",
+   "q": "Clickstream events must be processed in <b>real time, in order per user</b>, by several consumers, with <b>replay</b> of the last 7 days.",
+   "options": [
+    {
+     "t": "Kinesis Data Streams",
+     "why": "Ordered per shard, many consumers, retention up to 365 days."
+    },
+    {
+     "t": "SQS standard queue",
+     "why": "No ordering guarantee and no replay."
+    },
+    {
+     "t": "SNS",
+     "why": "No retention or replay."
+    },
+    {
+     "t": "Data Firehose",
+     "why": "Loads to destinations; no replay to consumers."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "firehose",
+   "q": "IoT data must land in S3 as Parquet every few minutes with <b>no code and no servers</b>.",
+   "options": [
+    {
+     "t": "Data Firehose with format conversion",
+     "why": "Buffers, converts and delivers with no code."
+    },
+    {
+     "t": "Kinesis Data Streams with a custom consumer",
+     "why": "Code to write and run."
+    },
+    {
+     "t": "SQS plus a Lambda writer",
+     "why": "More code."
+    },
+    {
+     "t": "DataSync",
+     "why": "Copies files, doesn't ingest streams."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "mq",
+   "q": "An on-prem app uses <b>JMS and AMQP</b> and must move to AWS with <b>no code changes</b> to messaging.",
+   "options": [
+    {
+     "t": "Amazon MQ",
+     "why": "Managed ActiveMQ/RabbitMQ that speaks those protocols."
+    },
+    {
+     "t": "SQS",
+     "why": "Different API; code changes needed."
+    },
+    {
+     "t": "SNS",
+     "why": "Different API and model."
+    },
+    {
+     "t": "EventBridge",
+     "why": "Different API."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "ds-vs-sgw",
+   "q": "A company wants to <b>migrate</b> 50 TB from NFS to EFS over its 10 Gbps link, then stop using the on-prem server.",
+   "options": [
+    {
+     "t": "DataSync",
+     "why": "Online, one-time or scheduled transfer with verification."
+    },
+    {
+     "t": "Storage Gateway File Gateway",
+     "why": "For ongoing on-prem access, not a one-off move."
+    },
+    {
+     "t": "Snowball Edge",
+     "why": "The link can move 50 TB in about a day."
+    },
+    {
+     "t": "Transfer Family",
+     "why": "For partners using SFTP."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "ga",
+   "q": "A UDP game runs in two regions. Players need <b>fixed IPs</b> and failover in <b>seconds</b> when a region fails.",
+   "options": [
+    {
+     "t": "Global Accelerator",
+     "why": "Static anycast IPs, TCP/UDP, fast health-based failover."
+    },
+    {
+     "t": "CloudFront",
+     "why": "HTTP only, and it caches."
+    },
+    {
+     "t": "Route 53 failover records",
+     "why": "DNS TTLs delay failover."
+    },
+    {
+     "t": "An NLB in each region",
+     "why": "Regional; no single global entry."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "cf",
+   "q": "A global news site serves the same images and pages to millions of readers and wants <b>lower latency and origin load</b>.",
+   "options": [
+    {
+     "t": "CloudFront",
+     "why": "Caches at edge locations."
+    },
+    {
+     "t": "Global Accelerator",
+     "why": "Faster path, but no caching."
+    },
+    {
+     "t": "Route 53 latency routing",
+     "why": "Picks a region, doesn't cache."
+    },
+    {
+     "t": "More EC2 instances in one region",
+     "why": "Still far from many readers."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "tgw",
+   "q": "120 VPCs across accounts and two data centers need to reach each other with the <b>least operational overhead</b>.",
+   "options": [
+    {
+     "t": "Transit Gateway",
+     "why": "One hub with transitive routing."
+    },
+    {
+     "t": "VPC peering mesh",
+     "why": "Thousands of non-transitive peerings."
+    },
+    {
+     "t": "PrivateLink",
+     "why": "Exposes services, not full routing."
+    },
+    {
+     "t": "A VPN from each VPC",
+     "why": "Lots of tunnels to manage."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "privatelink",
+   "q": "A SaaS provider must expose one API to hundreds of customer VPCs, many with <b>overlapping CIDRs</b>, without exposing the rest of its network.",
+   "options": [
+    {
+     "t": "PrivateLink (endpoint service behind an NLB)",
+     "why": "Service-level access; overlapping CIDRs don't matter."
+    },
+    {
+     "t": "VPC peering",
+     "why": "Overlapping CIDRs can't peer, and it exposes networks."
+    },
+    {
+     "t": "Transit Gateway",
+     "why": "Routing between networks; CIDRs must not overlap."
+    },
+    {
+     "t": "Public API over the internet",
+     "why": "Not private."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "athena",
+   "q": "Analysts run occasional SQL queries on logs in S3 and want <b>no infrastructure</b> and to pay only when they query.",
+   "options": [
+    {
+     "t": "Athena",
+     "why": "Serverless SQL on S3, billed per data scanned."
+    },
+    {
+     "t": "Redshift provisioned cluster",
+     "why": "Running all the time for occasional queries."
+    },
+    {
+     "t": "EMR cluster",
+     "why": "Clusters to manage."
+    },
+    {
+     "t": "OpenSearch",
+     "why": "Search engine, loading data first."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "scp-vs-boundary",
+   "q": "Developers may create IAM roles for their apps, but those roles must <b>never get more than a set of allowed permissions</b>.",
+   "options": [
+    {
+     "t": "Require a permission boundary on any role they create",
+     "why": "Caps the roles' effective permissions."
+    },
+    {
+     "t": "An SCP on the developers' account",
+     "why": "Caps the whole account, including admins."
+    },
+    {
+     "t": "A resource policy on each bucket",
+     "why": "Doesn't cap the role elsewhere."
+    },
+    {
+     "t": "Cognito user pool groups",
+     "why": "App users, not IAM roles."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "cognito-pools",
+   "q": "A mobile app's signed-in users must upload photos <b>directly to S3</b> with temporary AWS credentials.",
+   "options": [
+    {
+     "t": "Cognito identity pool, after sign-in with a user pool",
+     "why": "Exchanges the login for scoped temporary credentials."
+    },
+    {
+     "t": "Cognito user pool alone",
+     "why": "Gives tokens for your API, not AWS credentials."
+    },
+    {
+     "t": "IAM Identity Center",
+     "why": "For employees, not app customers."
+    },
+    {
+     "t": "An IAM user per app user",
+     "why": "Long-lived keys and doesn't scale."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "step-fn",
+   "q": "An order workflow calls 5 Lambda functions in order, with retries, a branch on payment result, and a wait for <b>manual approval</b>.",
+   "options": [
+    {
+     "t": "Step Functions",
+     "why": "Orchestrates steps, retries, branching and waits."
+    },
+    {
+     "t": "Chain Lambdas by having each call the next",
+     "why": "Hard to retry and observe; and no long waits."
+    },
+    {
+     "t": "SQS between every step",
+     "why": "Decouples but doesn't orchestrate."
+    },
+    {
+     "t": "EventBridge Scheduler",
+     "why": "Schedules, doesn't coordinate steps."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  }
+ ],
+ "drills": [
+  {
+   "id": "sec-finders",
+   "type": "buckets",
+   "title": "GuardDuty, Inspector, Macie or Security Hub?",
+   "intro": "Tap a scenario, then the service.",
+   "buckets": [
+    "GuardDuty",
+    "Inspector",
+    "Macie",
+    "Security Hub"
+   ],
+   "items": [
+    {
+     "t": "Crypto-mining on an instance",
+     "b": 0
+    },
+    {
+     "t": "CVE in a container image",
+     "b": 1
+    },
+    {
+     "t": "Passport numbers in a bucket",
+     "b": 2
+    },
+    {
+     "t": "All findings in one dashboard",
+     "b": 3
+    },
+    {
+     "t": "API calls from a Tor exit node",
+     "b": 0
+    },
+    {
+     "t": "Lambda package with a vulnerable library",
+     "b": 1
+    },
+    {
+     "t": "Classify S3 data for compliance",
+     "b": 2
+    },
+    {
+     "t": "CIS benchmark score across accounts",
+     "b": 3
+    }
+   ]
+  },
+  {
+   "id": "sm-or-ps",
+   "type": "thisorthat",
+   "title": "Secrets Manager or Parameter Store?",
+   "intro": "60 seconds. Tap the better fit.",
+   "a": "Secrets Manager",
+   "b": "Parameter Store",
+   "seconds": 60,
+   "items": [
+    {
+     "t": "Rotate RDS password automatically",
+     "ans": "a"
+    },
+    {
+     "t": "Feature flag per environment",
+     "ans": "b"
+    },
+    {
+     "t": "Replicate a secret to another region",
+     "ans": "a"
+    },
+    {
+     "t": "Free tier for config",
+     "ans": "b"
+    },
+    {
+     "t": "Third-party API key, rotate monthly",
+     "ans": "a"
+    },
+    {
+     "t": "Hierarchy like /prod/app/url",
+     "ans": "b"
+    },
+    {
+     "t": "Built-in rotation Lambda templates",
+     "ans": "a"
+    },
+    {
+     "t": "AMI ID used at launch",
+     "ans": "b"
+    }
+   ]
+  },
+  {
+   "id": "msg-match",
+   "type": "match",
+   "title": "Match the messaging service",
+   "intro": "Tap a service, then its trigger.",
+   "pairs": [
+    [
+     "SQS",
+     "Buffer work for one consumer pool"
+    ],
+    [
+     "SNS",
+     "Fan out one message to many"
+    ],
+    [
+     "EventBridge",
+     "Route by event content, SaaS sources"
+    ],
+    [
+     "Kinesis Data Streams",
+     "Ordered, replay, many consumers"
+    ],
+    [
+     "Data Firehose",
+     "Land a stream in S3, no code"
+    ],
+    [
+     "Amazon MQ",
+     "Existing JMS / AMQP app"
+    ]
+   ]
+  },
+  {
+   "id": "cf-or-ga",
+   "type": "thisorthat",
+   "title": "CloudFront or Global Accelerator?",
+   "intro": "60 seconds. Tap the one that fits.",
+   "a": "CloudFront",
+   "b": "Global Accelerator",
+   "seconds": 60,
+   "items": [
+    {
+     "t": "Cache images at the edge",
+     "ans": "a"
+    },
+    {
+     "t": "UDP game traffic",
+     "ans": "b"
+    },
+    {
+     "t": "Two static anycast IPs",
+     "ans": "b"
+    },
+    {
+     "t": "Signed URLs for video",
+     "ans": "a"
+    },
+    {
+     "t": "Regional failover in seconds",
+     "ans": "b"
+    },
+    {
+     "t": "Attach WAF to protect a website",
+     "ans": "a"
+    },
+    {
+     "t": "Non-HTTP TCP app across regions",
+     "ans": "b"
+    },
+    {
+     "t": "Reduce origin load",
+     "ans": "a"
+    }
+   ]
+  },
+  {
+   "id": "mix-keywords",
+   "type": "keyword",
+   "title": "Spot the keyword",
+   "intro": "Tap the phrase that decides the answer.",
+   "items": [
+    {
+     "parts": [
+      "A team must share an API",
+      "with 300 customer VPCs",
+      "that have overlapping CIDRs",
+      "privately."
+     ],
+     "key": 2,
+     "answer": "PrivateLink",
+     "why": "Overlapping CIDRs rule out peering and TGW."
+    },
+    {
+     "parts": [
+      "Security wants",
+      "one dashboard",
+      "for findings from many services",
+      "across all accounts."
+     ],
+     "key": 1,
+     "answer": "Security Hub",
+     "why": "Aggregation is Security Hub's job."
+    },
+    {
+     "parts": [
+      "Partners",
+      "upload invoices nightly",
+      "over SFTP",
+      "into S3."
+     ],
+     "key": 2,
+     "answer": "Transfer Family",
+     "why": "SFTP is the tell."
+    },
+    {
+     "parts": [
+      "An event pipeline",
+      "needs replay of 7 days",
+      "for several consumers",
+      "in order."
+     ],
+     "key": 1,
+     "answer": "Kinesis Data Streams",
+     "why": "Replay rules out SQS, SNS and Firehose."
+    }
+   ]
+  }
+ ]
+}
