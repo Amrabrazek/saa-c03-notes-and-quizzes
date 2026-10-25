@@ -29,13 +29,15 @@
       "id": "vpc",
       "num": 5,
       "title": "VPC core",
-      "built": false
+      "built": true,
+      "file": "content/vpc.json"
     },
     {
       "id": "hybrid",
       "num": 6,
       "title": "Hybrid connectivity",
-      "built": false
+      "built": true,
+      "file": "content/hybrid.json"
     },
     {
       "id": "edge",
@@ -48,7 +50,8 @@
       "id": "integration",
       "num": 8,
       "title": "Integration, analytics & ML",
-      "built": false
+      "built": true,
+      "file": "content/integration.json"
     },
     {
       "id": "security",

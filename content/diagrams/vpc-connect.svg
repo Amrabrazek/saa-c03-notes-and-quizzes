@@ -1,0 +1,40 @@
+<svg viewBox="0 0 720 300" role="img" aria-label="Three ways to connect VPCs. Peering links two VPCs one to one and is not transitive. Transit Gateway is a hub that many VPCs and on-premises connect to. PrivateLink exposes one service behind an NLB to consumer VPCs through interface endpoints." xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="vc-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="dg-head"/></marker>
+  </defs>
+  <!-- peering -->
+  <text x="110" y="24" text-anchor="middle" class="dg-t">Peering</text>
+  <text x="110" y="42" text-anchor="middle" class="dg-s">1 : 1, whole network</text>
+  <rect x="30" y="60" width="70" height="40" rx="8" class="dg-box"/><text x="65" y="85" text-anchor="middle" class="dg-t">A</text>
+  <rect x="120" y="60" width="70" height="40" rx="8" class="dg-box"/><text x="155" y="85" text-anchor="middle" class="dg-t">B</text>
+  <rect x="120" y="150" width="70" height="40" rx="8" class="dg-box"/><text x="155" y="175" text-anchor="middle" class="dg-t">C</text>
+  <path d="M100 80H120" class="dg-l" marker-end="url(#vc-arrow)" marker-start="url(#vc-arrow)"/>
+  <path d="M155 100V150" class="dg-l" marker-end="url(#vc-arrow)" marker-start="url(#vc-arrow)"/>
+  <path d="M65 100Q65 170 120 170" class="dg-l dg-dashl"/>
+  <text x="30" y="215" class="dg-s">A ↔ C does NOT work</text>
+  <text x="30" y="233" class="dg-s">(not transitive)</text>
+  <text x="30" y="251" class="dg-s">no overlapping CIDRs</text>
+  <!-- tgw -->
+  <text x="360" y="24" text-anchor="middle" class="dg-t">Transit Gateway</text>
+  <text x="360" y="42" text-anchor="middle" class="dg-s">hub, many networks</text>
+  <rect x="290" y="120" width="140" height="44" rx="8" class="dg-acc"/>
+  <text x="360" y="147" text-anchor="middle" class="dg-t">TGW</text>
+  <rect x="262" y="60" width="56" height="34" rx="8" class="dg-box"/><text x="290" y="82" text-anchor="middle" class="dg-s">VPC</text>
+  <rect x="332" y="60" width="56" height="34" rx="8" class="dg-box"/><text x="360" y="82" text-anchor="middle" class="dg-s">VPC</text>
+  <rect x="402" y="60" width="56" height="34" rx="8" class="dg-box"/><text x="430" y="82" text-anchor="middle" class="dg-s">VPC</text>
+  <rect x="300" y="196" width="120" height="34" rx="8" class="dg-box"/><text x="360" y="218" text-anchor="middle" class="dg-s">On-prem (VPN/DX)</text>
+  <path d="M290 94L330 120M360 94V120M430 94L390 120M360 164V196" class="dg-l"/>
+  <text x="270" y="251" class="dg-s">transitive, route tables decide</text>
+  <!-- privatelink -->
+  <text x="600" y="24" text-anchor="middle" class="dg-t">PrivateLink</text>
+  <text x="600" y="42" text-anchor="middle" class="dg-s">one service only</text>
+  <rect x="510" y="60" width="180" height="70" rx="10" class="dg-box dg-dash" style="fill:none"/>
+  <text x="522" y="78" class="dg-s">Provider VPC</text>
+  <rect x="560" y="86" width="80" height="34" rx="8" class="dg-acc2"/><text x="600" y="108" text-anchor="middle" class="dg-t">NLB</text>
+  <rect x="510" y="160" width="180" height="70" rx="10" class="dg-box dg-dash" style="fill:none"/>
+  <text x="522" y="178" class="dg-s">Consumer VPC</text>
+  <rect x="530" y="186" width="140" height="34" rx="8" class="dg-acc2"/><text x="600" y="208" text-anchor="middle" class="dg-s">Interface endpoint</text>
+  <path d="M625 186V120" class="dg-l" marker-end="url(#vc-arrow)"/>
+  <text x="510" y="251" class="dg-s">overlapping CIDRs are fine</text>
+  <text x="510" y="269" class="dg-s">consumer → provider only</text>
+</svg>

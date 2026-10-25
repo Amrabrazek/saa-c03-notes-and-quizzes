@@ -1,0 +1,39 @@
+<svg viewBox="0 0 720 330" role="img" aria-label="Kinesis Data Streams stores records in shards for up to 365 days so many custom consumers can read and replay them. Firehose has no storage: it buffers, optionally transforms, and delivers to destinations such as S3, Redshift or OpenSearch. Data Streams can feed Firehose." xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="kf-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="dg-head"/></marker>
+  </defs>
+  <rect x="16" y="120" width="120" height="70" rx="10" class="dg-box"/>
+  <text x="76" y="150" text-anchor="middle" class="dg-t">Producers</text>
+  <text x="76" y="170" text-anchor="middle" class="dg-s">apps, IoT, logs</text>
+  <!-- KDS -->
+  <rect x="190" y="30" width="220" height="110" rx="10" class="dg-acc"/>
+  <text x="300" y="56" text-anchor="middle" class="dg-t">Kinesis Data Streams</text>
+  <text x="300" y="78" text-anchor="middle" class="dg-s">stores records in shards</text>
+  <text x="300" y="96" text-anchor="middle" class="dg-s">24 h to 365 days · replay</text>
+  <text x="300" y="114" text-anchor="middle" class="dg-s">order per partition key</text>
+  <text x="300" y="132" text-anchor="middle" class="dg-s">real time (~200 ms)</text>
+  <!-- consumers -->
+  <rect x="480" y="20" width="224" height="120" rx="10" class="dg-box"/>
+  <text x="592" y="44" text-anchor="middle" class="dg-t">Your consumers</text>
+  <text x="592" y="66" text-anchor="middle" class="dg-s">Lambda · KCL app on EC2/ECS</text>
+  <text x="592" y="84" text-anchor="middle" class="dg-s">Managed Service for Apache Flink</text>
+  <text x="592" y="102" text-anchor="middle" class="dg-s">many at once, each at its own pace</text>
+  <text x="592" y="122" text-anchor="middle" class="dg-s">enhanced fan-out: 2 MB/s each</text>
+  <!-- firehose -->
+  <rect x="190" y="200" width="220" height="100" rx="10" class="dg-acc2"/>
+  <text x="300" y="226" text-anchor="middle" class="dg-t">Amazon Data Firehose</text>
+  <text x="300" y="248" text-anchor="middle" class="dg-s">no storage, no replay</text>
+  <text x="300" y="266" text-anchor="middle" class="dg-s">buffer → transform → deliver</text>
+  <text x="300" y="284" text-anchor="middle" class="dg-s">near real time · fully managed</text>
+  <rect x="480" y="200" width="224" height="100" rx="10" class="dg-box"/>
+  <text x="592" y="226" text-anchor="middle" class="dg-t">Destinations</text>
+  <text x="592" y="248" text-anchor="middle" class="dg-s">S3 · Redshift · OpenSearch</text>
+  <text x="592" y="266" text-anchor="middle" class="dg-s">Splunk · HTTP endpoints</text>
+  <text x="592" y="284" text-anchor="middle" class="dg-s">can convert to Parquet</text>
+  <path d="M136 140Q160 90 190 86" class="dg-l" marker-end="url(#kf-arrow)"/>
+  <path d="M136 170Q160 245 190 250" class="dg-l" marker-end="url(#kf-arrow)"/>
+  <path d="M410 80H480" class="dg-l" marker-end="url(#kf-arrow)"/>
+  <path d="M410 250H480" class="dg-l" marker-end="url(#kf-arrow)"/>
+  <path d="M300 140V200" class="dg-l dg-dashl" marker-end="url(#kf-arrow)"/>
+  <text x="310" y="176" class="dg-s">streams can feed Firehose</text>
+</svg>
