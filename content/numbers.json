@@ -1,0 +1,907 @@
+{
+ "id": "numbers",
+ "title": "Numbers & ports",
+ "oneLiner": "The limits, timeouts and ports the exam expects you to know cold. Learn the <b>exam number</b>; notes flag where AWS has since raised it.",
+ "notes": [
+  {
+   "type": "p",
+   "html": "Learn the <b>exam number</b>. Where AWS has since changed it, the note says so; questions written before the change still expect the old value."
+  },
+  {
+   "type": "h2",
+   "text": "Compute and serverless"
+  },
+  {
+   "type": "table",
+   "head": [
+    "What",
+    "Exam number",
+    "Note"
+   ],
+   "rows": [
+    [
+     "Lambda timeout",
+     "<b>15 min</b>",
+     "Longer → Fargate, Batch or Step Functions"
+    ],
+    [
+     "Lambda memory / /tmp",
+     "10 GB / 10 GB",
+     "/tmp starts at 512 MB"
+    ],
+    [
+     "Lambda concurrency per region",
+     "1,000",
+     "Soft limit"
+    ],
+    [
+     "Step Functions Standard / Express",
+     "1 year / 5 min",
+     ""
+    ],
+    [
+     "Spot interruption notice",
+     "2 min",
+     ""
+    ],
+    [
+     "Spread placement group",
+     "7 instances per AZ",
+     "Partition: 7 partitions per AZ"
+    ],
+    [
+     "Elastic IPs",
+     "5 per region",
+     "Soft limit"
+    ],
+    [
+     "Hibernate",
+     "RAM under 150 GB, up to 60 days",
+     ""
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"job runs 40 minutes\"",
+     "Not Lambda (15 min)"
+    ],
+    [
+     "\"workflow waits for days\"",
+     "Step Functions Standard"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Storage"
+  },
+  {
+   "type": "table",
+   "head": [
+    "What",
+    "Exam number",
+    "Note"
+   ],
+   "rows": [
+    [
+     "S3 object size",
+     "<b>5 TB</b>",
+     "Raised to 50 TB in late 2025"
+    ],
+    [
+     "Single PUT / multipart",
+     "PUT up to 5 GB; multipart over 100 MB recommended",
+     ""
+    ],
+    [
+     "S3 per prefix",
+     "3,500 writes/s, 5,500 reads/s",
+     "More prefixes = more throughput"
+    ],
+    [
+     "Min days in class",
+     "Standard-IA 30, Glacier IR/Flexible 90, Deep Archive 180",
+     ""
+    ],
+    [
+     "Glacier Flexible",
+     "Expedited 1-5 min, Standard 3-5 h, Bulk 5-12 h",
+     ""
+    ],
+    [
+     "Deep Archive",
+     "Standard 12 h, Bulk 48 h",
+     ""
+    ],
+    [
+     "gp3",
+     "3,000 baseline, <b>16,000</b> max IOPS",
+     "Raised to 80,000 in 2025"
+    ],
+    [
+     "io2 Block Express",
+     "256,000 IOPS",
+     "Multi-Attach up to 16 instances, same AZ"
+    ],
+    [
+     "EBS Snapshot Archive restore",
+     "24-72 h",
+     ""
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"object larger than 5 GB\"",
+     "Multipart upload"
+    ],
+    [
+     "\"more than 16,000 IOPS\"",
+     "io2"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Databases"
+  },
+  {
+   "type": "table",
+   "head": [
+    "What",
+    "Exam number",
+    "Note"
+   ],
+   "rows": [
+    [
+     "RDS / Aurora read replicas",
+     "15 / 15",
+     ""
+    ],
+    [
+     "Automated backups",
+     "Max 35 days",
+     "Longer → snapshots or AWS Backup"
+    ],
+    [
+     "Aurora storage",
+     "128 TiB",
+     "6 copies across 3 AZs"
+    ],
+    [
+     "Aurora failover",
+     "Under 30 s",
+     "Multi-AZ RDS: 1-2 min"
+    ],
+    [
+     "Aurora Global",
+     "Up to 5 secondary regions, RPO ~1 s, RTO ~1 min",
+     ""
+    ],
+    [
+     "DynamoDB item",
+     "<b>400 KB</b>",
+     "Bigger → S3 + pointer"
+    ],
+    [
+     "DynamoDB Streams",
+     "24 h",
+     "Kinesis Data Streams: up to 365 days"
+    ],
+    [
+     "RCU / WCU",
+     "4 KB strong read / 1 KB write",
+     "Eventually consistent = half"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"item is 1 MB\"",
+     "Store in S3, key in DynamoDB"
+    ],
+    [
+     "\"keep backups 7 years\"",
+     "AWS Backup or snapshots (not automated backups)"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Networking"
+  },
+  {
+   "type": "table",
+   "head": [
+    "What",
+    "Exam number",
+    "Note"
+   ],
+   "rows": [
+    [
+     "VPC CIDR",
+     "/16 to /28",
+     "Up to 5 CIDRs per VPC by default"
+    ],
+    [
+     "Reserved IPs per subnet",
+     "<b>5</b>",
+     "A /28 gives 11 usable"
+    ],
+    [
+     "Security groups per ENI",
+     "5",
+     "Rules: 60 inbound + 60 outbound"
+    ],
+    [
+     "NAT gateway",
+     "Up to 100 Gbps",
+     "Scales by itself; one per AZ for HA"
+    ],
+    [
+     "Site-to-Site VPN tunnel",
+     "~1.25 Gbps",
+     "More → ECMP on Transit Gateway, or Direct Connect"
+    ],
+    [
+     "Direct Connect dedicated",
+     "1, 10, 100 Gbps",
+     "Hosted: 50 Mbps to 25 Gbps via partners"
+    ],
+    [
+     "Route 53 multivalue",
+     "Up to 8 healthy records",
+     ""
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"/24 subnet usable IPs\"",
+     "251"
+    ],
+    [
+     "\"more than 1.25 Gbps over VPN\"",
+     "ECMP on TGW"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Messaging and APIs"
+  },
+  {
+   "type": "table",
+   "head": [
+    "What",
+    "Exam number",
+    "Note"
+   ],
+   "rows": [
+    [
+     "SQS retention",
+     "Default 4 days, max 14",
+     ""
+    ],
+    [
+     "SQS message",
+     "<b>256 KB</b>",
+     "Raised to 1 MiB in 2025; exam answer for more is Extended Client + S3"
+    ],
+    [
+     "SQS visibility timeout",
+     "Default 30 s, max 12 h",
+     ""
+    ],
+    [
+     "SQS delay",
+     "Max 15 min",
+     ""
+    ],
+    [
+     "SQS FIFO",
+     "300 msg/s, 3,000 with batching",
+     "High-throughput mode is much higher"
+    ],
+    [
+     "Kinesis shard",
+     "1 MB/s in, 2 MB/s out",
+     "Enhanced fan-out: 2 MB/s per consumer"
+    ],
+    [
+     "API Gateway",
+     "10,000 rps (burst 5,000), 29 s timeout, 10 MB payload",
+     "Timeout can be raised for REST regional/private since 2024"
+    ],
+    [
+     "ALB idle timeout / deregistration delay",
+     "60 s / 300 s",
+     ""
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"message is 2 MB\"",
+     "SQS Extended Client + S3"
+    ],
+    [
+     "\"API call takes 60 seconds\"",
+     "Async: SQS/Step Functions, not API Gateway sync"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Security and operations"
+  },
+  {
+   "type": "table",
+   "head": [
+    "What",
+    "Exam number",
+    "Note"
+   ],
+   "rows": [
+    [
+     "CloudTrail event history",
+     "90 days",
+     "Longer → trail to S3"
+    ],
+    [
+     "KMS customer key rotation",
+     "Off until you enable it; then yearly by default, 90-2,560 days configurable",
+     "AWS managed keys: yearly"
+    ],
+    [
+     "KMS key deletion wait",
+     "7-30 days",
+     ""
+    ],
+    [
+     "ACM cert for CloudFront",
+     "us-east-1",
+     ""
+    ],
+    [
+     "CloudWatch metrics",
+     "Basic 5 min, detailed 1 min",
+     ""
+    ],
+    [
+     "CloudWatch Logs → S3 export",
+     "Up to 12 h",
+     "Real time → subscription filters"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"CloudFront custom domain cert\"",
+     "ACM in us-east-1"
+    ],
+    [
+     "\"audit API calls from last year\"",
+     "CloudTrail trail to S3"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Ports"
+  },
+  {
+   "type": "table",
+   "head": [
+    "Port",
+    "Service"
+   ],
+   "rows": [
+    [
+     "22",
+     "SSH"
+    ],
+    [
+     "3389",
+     "RDP"
+    ],
+    [
+     "80 / 443",
+     "HTTP / HTTPS"
+    ],
+    [
+     "3306",
+     "MySQL, MariaDB, Aurora MySQL"
+    ],
+    [
+     "5432",
+     "PostgreSQL, Aurora PostgreSQL"
+    ],
+    [
+     "1433",
+     "SQL Server"
+    ],
+    [
+     "1521",
+     "Oracle"
+    ],
+    [
+     "5439",
+     "Redshift"
+    ],
+    [
+     "6379",
+     "Redis / Valkey"
+    ],
+    [
+     "11211",
+     "Memcached"
+    ],
+    [
+     "2049",
+     "NFS (EFS)"
+    ],
+    [
+     "445",
+     "SMB (FSx for Windows)"
+    ],
+    [
+     "53",
+     "DNS"
+    ],
+    [
+     "6081",
+     "GENEVE (GWLB)"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"allow MySQL from the app tier\"",
+     "TCP 3306 from the app security group"
+    ],
+    [
+     "\"EFS mount fails\"",
+     "Allow 2049"
+    ]
+   ]
+  }
+ ],
+ "questions": [
+  {
+   "id": "n-lambda",
+   "q": "A job runs about <b>40 minutes</b> per file. Which is <b>not</b> an option on its own?",
+   "options": [
+    {
+     "t": "Lambda",
+     "why": "Max 15 minutes."
+    },
+    {
+     "t": "ECS on Fargate",
+     "why": "No time limit."
+    },
+    {
+     "t": "AWS Batch",
+     "why": "Built for long jobs."
+    },
+    {
+     "t": "EC2",
+     "why": "No limit."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "n-subnet",
+   "q": "How many <b>usable</b> IPs does a /28 subnet have?",
+   "options": [
+    {
+     "t": "11",
+     "why": "16 minus 5 reserved by AWS."
+    },
+    {
+     "t": "16",
+     "why": "Forgets the 5 reserved."
+    },
+    {
+     "t": "14",
+     "why": "That's the classic networking rule (minus 2), not AWS's."
+    },
+    {
+     "t": "13",
+     "why": "AWS reserves 5, not 3."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "n-ddb",
+   "q": "Records are up to <b>2 MB</b> each and must be looked up by key in DynamoDB.",
+   "options": [
+    {
+     "t": "Store each record in S3 and keep the key and S3 path in DynamoDB",
+     "why": "Items max out at 400 KB."
+    },
+    {
+     "t": "Enable on-demand mode",
+     "why": "Doesn't change the item limit."
+    },
+    {
+     "t": "Compress and store in one item",
+     "why": "Still risky against 400 KB."
+    },
+    {
+     "t": "Use DAX",
+     "why": "A cache, same limits."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "n-sqs",
+   "q": "Messages of <b>5 MB</b> must go through SQS. What's the standard answer?",
+   "options": [
+    {
+     "t": "SQS Extended Client Library storing the payload in S3",
+     "why": "SQS carries a pointer, S3 carries the data."
+    },
+    {
+     "t": "Raise the SQS message size limit",
+     "why": "Can't reach 5 MB."
+    },
+    {
+     "t": "Use a FIFO queue",
+     "why": "Same size limit."
+    },
+    {
+     "t": "Split into many messages by hand",
+     "why": "Fragile, custom code."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "n-retention",
+   "q": "Consumers can be down for up to <b>10 days</b> and must not lose SQS messages.",
+   "options": [
+    {
+     "t": "Set retention to 14 days",
+     "why": "Max is 14; default 4 would lose messages."
+    },
+    {
+     "t": "Keep the default retention",
+     "why": "Default is 4 days."
+    },
+    {
+     "t": "Raise the visibility timeout to 10 days",
+     "why": "Max 12 hours, and it's a different setting."
+    },
+    {
+     "t": "Use a delay queue",
+     "why": "Delays delivery, doesn't keep messages longer."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "n-backup",
+   "q": "RDS backups must be kept for <b>7 years</b>.",
+   "options": [
+    {
+     "t": "AWS Backup plan (or scheduled manual snapshots) with 7-year retention",
+     "why": "Automated backups stop at 35 days."
+    },
+    {
+     "t": "Set automated backup retention to 7 years",
+     "why": "Max 35 days."
+    },
+    {
+     "t": "Enable Multi-AZ",
+     "why": "HA, not retention."
+    },
+    {
+     "t": "Create a read replica",
+     "why": "Not a backup."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "n-s3-upload",
+   "q": "A 20 GB video must be uploaded to S3 quickly and survive network blips.",
+   "options": [
+    {
+     "t": "Multipart upload",
+     "why": "Required above 5 GB, and parts retry independently."
+    },
+    {
+     "t": "A single PUT",
+     "why": "Max 5 GB."
+    },
+    {
+     "t": "S3 Transfer Acceleration alone",
+     "why": "Speeds the path, still needs multipart."
+    },
+    {
+     "t": "Snowball",
+     "why": "Overkill for 20 GB."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "n-acm",
+   "q": "A CloudFront distribution needs a custom domain certificate from ACM. Where is it created?",
+   "options": [
+    {
+     "t": "us-east-1",
+     "why": "CloudFront only reads ACM certs from N. Virginia."
+    },
+    {
+     "t": "The origin's region",
+     "why": "Only for ALB/API Gateway regional endpoints."
+    },
+    {
+     "t": "Any region",
+     "why": "CloudFront needs us-east-1."
+    },
+    {
+     "t": "Import it into IAM only",
+     "why": "Legacy option; ACM in us-east-1 is the answer."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "n-port",
+   "q": "App servers can't reach an <b>Aurora PostgreSQL</b> cluster. Which inbound rule should the DB security group have?",
+   "options": [
+    {
+     "t": "TCP 5432 from the app tier's security group",
+     "why": "PostgreSQL port, from the app SG."
+    },
+    {
+     "t": "TCP 3306 from 0.0.0.0/0",
+     "why": "Wrong port and open to the world."
+    },
+    {
+     "t": "TCP 1433 from the app SG",
+     "why": "SQL Server's port."
+    },
+    {
+     "t": "All traffic from the VPC CIDR",
+     "why": "Works but far too broad."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "n-vpn",
+   "q": "A Site-to-Site VPN must carry about <b>4 Gbps</b>. What works?",
+   "options": [
+    {
+     "t": "Several VPN tunnels with ECMP on a Transit Gateway",
+     "why": "Each tunnel is about 1.25 Gbps; ECMP adds them up."
+    },
+    {
+     "t": "One VPN to a virtual private gateway",
+     "why": "Capped around 1.25 Gbps per tunnel, no ECMP."
+    },
+    {
+     "t": "Raise the tunnel MTU",
+     "why": "Doesn't change bandwidth limits."
+    },
+    {
+     "t": "Accelerated VPN alone",
+     "why": "Better path, same per-tunnel limit."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "n-cloudtrail",
+   "q": "Auditors need API activity from <b>last year</b>.",
+   "options": [
+    {
+     "t": "A CloudTrail trail delivering to S3 (query with Athena)",
+     "why": "Event history only keeps 90 days."
+    },
+    {
+     "t": "CloudTrail event history in the console",
+     "why": "90 days."
+    },
+    {
+     "t": "CloudWatch metrics",
+     "why": "Not API calls."
+    },
+    {
+     "t": "AWS Config timeline",
+     "why": "Configuration changes, not every API call."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "n-sfn",
+   "q": "An approval workflow can wait <b>up to 2 weeks</b> for a manager.",
+   "options": [
+    {
+     "t": "Step Functions Standard workflow",
+     "why": "Runs up to 1 year."
+    },
+    {
+     "t": "Step Functions Express workflow",
+     "why": "Max 5 minutes."
+    },
+    {
+     "t": "A Lambda function that waits",
+     "why": "Max 15 minutes."
+    },
+    {
+     "t": "SQS delay queue",
+     "why": "Max 15-minute delay."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  }
+ ],
+ "drills": [
+  {
+   "id": "ports",
+   "type": "match",
+   "title": "Match the port",
+   "intro": "Tap a port, then its service.",
+   "pairs": [
+    [
+     "22",
+     "SSH"
+    ],
+    [
+     "3389",
+     "RDP"
+    ],
+    [
+     "3306",
+     "MySQL / Aurora MySQL"
+    ],
+    [
+     "5432",
+     "PostgreSQL"
+    ],
+    [
+     "1433",
+     "SQL Server"
+    ],
+    [
+     "2049",
+     "NFS (EFS)"
+    ],
+    [
+     "6379",
+     "Redis / Valkey"
+    ]
+   ]
+  },
+  {
+   "id": "limits",
+   "type": "match",
+   "title": "Match the number",
+   "intro": "Tap a limit, then its value.",
+   "pairs": [
+    [
+     "Lambda timeout",
+     "15 minutes"
+    ],
+    [
+     "DynamoDB item",
+     "400 KB"
+    ],
+    [
+     "SQS max retention",
+     "14 days"
+    ],
+    [
+     "RDS automated backups",
+     "35 days"
+    ],
+    [
+     "CloudTrail event history",
+     "90 days"
+    ],
+    [
+     "Reserved IPs per subnet",
+     "5"
+    ],
+    [
+     "Spot warning",
+     "2 minutes"
+    ]
+   ]
+  },
+  {
+   "id": "how-long",
+   "type": "buckets",
+   "title": "Seconds, minutes, hours or days?",
+   "intro": "Tap an item, then how long it takes or lasts.",
+   "buckets": [
+    "Seconds",
+    "Minutes",
+    "Hours",
+    "Days"
+   ],
+   "items": [
+    {
+     "t": "Aurora failover",
+     "b": 0
+    },
+    {
+     "t": "Glacier Expedited retrieval",
+     "b": 1
+    },
+    {
+     "t": "Deep Archive Standard retrieval",
+     "b": 2
+    },
+    {
+     "t": "Snapshot Archive restore",
+     "b": 3
+    },
+    {
+     "t": "SQS default visibility timeout",
+     "b": 0
+    },
+    {
+     "t": "Lambda max timeout",
+     "b": 1
+    },
+    {
+     "t": "CloudWatch Logs export to S3 delay",
+     "b": 2
+    },
+    {
+     "t": "KMS key deletion wait",
+     "b": 3
+    }
+   ]
+  }
+ ]
+}

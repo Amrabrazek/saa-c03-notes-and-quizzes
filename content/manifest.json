@@ -79,6 +79,13 @@
       "title": "Mix-ups",
       "eyebrow": "Across sections",
       "file": "content/mixups.json"
+    },
+    {
+      "id": "numbers",
+      "num": "#",
+      "title": "Numbers & ports",
+      "eyebrow": "Across sections",
+      "file": "content/numbers.json"
     }
   ]
 }

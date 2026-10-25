@@ -463,6 +463,61 @@
      "Access Advisor"
     ]
    ]
+  },
+  {
+   "type": "h2",
+   "text": "Shared responsibility"
+  },
+  {
+   "type": "p",
+   "html": "AWS secures the cloud <b>itself</b>; you secure what you put <b>in</b> it. The more managed the service, the more AWS takes on."
+  },
+  {
+   "type": "table",
+   "head": [
+    "",
+    "AWS",
+    "You"
+   ],
+   "rows": [
+    [
+     "Always",
+     "Data centers, hardware, network, hypervisor",
+     "Your data, IAM, encryption choices, who gets access"
+    ],
+    [
+     "EC2",
+     "The host",
+     "<b>Guest OS patches</b>, security groups, app code"
+    ],
+    [
+     "RDS",
+     "DB engine patching, OS, backups running",
+     "DB users, network access, encryption on/off"
+    ],
+    [
+     "Lambda, DynamoDB, S3",
+     "Nearly everything underneath",
+     "Code, IAM, data and bucket policies"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"who patches the EC2 OS\"",
+     "Customer"
+    ],
+    [
+     "\"who patches the RDS engine\"",
+     "AWS (in your maintenance window)"
+    ],
+    [
+     "\"who configures security groups\"",
+     "Customer"
+    ]
+   ]
   }
  ],
  "questions": [
@@ -975,6 +1030,31 @@
    ],
    "answer": [
     1
+   ]
+  },
+  {
+   "id": "shared-resp",
+   "q": "Under the shared responsibility model, which task belongs to the <b>customer</b>?",
+   "options": [
+    {
+     "t": "Patching the guest operating system on EC2",
+     "why": "The OS on EC2 is yours."
+    },
+    {
+     "t": "Patching the hypervisor",
+     "why": "AWS."
+    },
+    {
+     "t": "Patching the RDS database engine",
+     "why": "AWS applies engine patches in your maintenance window."
+    },
+    {
+     "t": "Physical security of data centers",
+     "why": "AWS."
+    }
+   ],
+   "answer": [
+    0
    ]
   }
  ],
