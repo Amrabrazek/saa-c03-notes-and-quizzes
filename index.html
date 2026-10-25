@@ -364,7 +364,7 @@ a.card:hover { border-color: var(--accent); }
   function el(html) { var t = document.createElement("template"); t.innerHTML = html.trim(); return t.content; }
   function weakById(id) { return data.weak.find(function (w) { return w.id === id; }); }
   function fixById(id) { return data.fixes.find(function (f) { return f.id === id; }); }
-  function secMeta(id) { return data.manifest.sections.find(function (s) { return s.id === id; }); }
+  function secMeta(id) { return data.manifest.sections.concat(data.manifest.extras || []).find(function (s) { return s.id === id; }); }
   function allQuestions() { var out = []; Object.keys(data.sections).forEach(function (k) { data.sections[k].questions.forEach(function (q) { out.push(q); }); }); return out; }
   function qCountFor(field, id) { return allQuestions().filter(function (q) { return q[field] === id; }).length; }
 
@@ -374,7 +374,7 @@ a.card:hover { border-color: var(--accent); }
   Promise.all([getJSON("content/manifest.json"), getJSON("content/weakspots.json"), getJSON("content/corrections.json")])
     .then(function (res) {
       data.manifest = res[0]; data.weak = res[1]; data.fixes = res[2];
-      var built = data.manifest.sections.filter(function (s) { return s.built; });
+      var built = data.manifest.sections.filter(function (s) { return s.built; }).concat(data.manifest.extras || []);
       return Promise.all(built.map(function (s) {
         return getJSON(s.file).then(function (sec) {
           data.sections[s.id] = sec;
@@ -417,17 +417,21 @@ a.card:hover { border-color: var(--accent); }
     var html = '<p class="eyebrow">Contents</p><h1>All sections</h1><p class="lede">' + data.manifest.sections.length + ' sections, ' + built + ' ready. Tap a section or jump straight to a topic or its quiz.</p>';
     html += '<div style="margin-top:20px"><label class="note" for="toc-q">Find a topic</label><br><input class="toc-filter" id="toc-q" type="search" placeholder="e.g. Route 53, Kinesis, NACL" autocomplete="off"></div>';
     html += '<div class="toc" id="toc" style="margin-top:12px">';
+    function tocSec(s, sec) {
+      var topics = sec.notes.filter(function (b) { return b.type === "h2"; });
+      return '<div class="toc-sec" data-text="' + esc((s.title + " " + topics.map(function (t) { return t.text; }).join(" ")).toLowerCase()) + '"><span class="num">' + s.num + '</span><h2><a href="#' + s.id + '">' + esc(s.title) + '</a></h2><div class="toc-topics">' +
+        topics.map(function (t) { return '<a href="#' + s.id + '--' + slug(t.text) + '">' + esc(t.text) + '</a>'; }).join("") +
+        '<a class="go" href="#' + s.id + '--quiz">Quiz · ' + Math.min(20, sec.questions.length) + ' questions</a>' + (sec.drills && sec.drills.length ? '<a class="go" href="#' + s.id + '--drills">Drills · ' + sec.drills.length + '</a>' : "") + '</div></div>';
+    }
     data.manifest.sections.forEach(function (s) {
       var sec = data.sections[s.id];
       if (sec) {
-        var topics = sec.notes.filter(function (b) { return b.type === "h2"; });
-        html += '<div class="toc-sec" data-text="' + esc((s.title + " " + topics.map(function (t) { return t.text; }).join(" ")).toLowerCase()) + '"><span class="num">' + s.num + '</span><h2><a href="#' + s.id + '">' + esc(s.title) + '</a></h2><div class="toc-topics">' +
-          topics.map(function (t) { return '<a href="#' + s.id + '--' + slug(t.text) + '">' + esc(t.text) + '</a>'; }).join("") +
-          '<a class="go" href="#' + s.id + '--quiz">Quiz · ' + Math.min(20, sec.questions.length) + ' questions</a>' + (sec.drills && sec.drills.length ? '<a class="go" href="#' + s.id + '--drills">Drills · ' + sec.drills.length + '</a>' : "") + '</div></div>';
+        html += tocSec(s, sec);
       } else {
         html += '<div class="toc-sec off" data-text="' + esc(s.title.toLowerCase()) + '"><span class="num">' + s.num + '</span><h2>' + esc(s.title) + '</h2><span class="soon">Coming soon</span></div>';
       }
     });
+    (data.manifest.extras || []).forEach(function (s) { if (data.sections[s.id]) html += tocSec(s, data.sections[s.id]); });
     html += '</div>';
     m.innerHTML = html;
     document.getElementById("toc-q").addEventListener("input", function () {
@@ -440,7 +444,9 @@ a.card:hover { border-color: var(--accent); }
     var r = document.getElementById("rail");
     var html = '<button class="btn rail-close" id="rail-close">Close</button><p class="brand">' + esc(data.manifest.title) + '<small>AWS Solutions Architect Associate</small></p>';
     html += '<a href="#contents"' + (active === "contents" ? ' aria-current="page"' : "") + '><span class="n">≡</span>Contents</a>';
-    html += '<a href="#weak"' + (active === "weak" ? ' aria-current="page"' : "") + '><span class="n">◆</span>Weak spots & fixes</a><div class="sep"></div>';
+    html += '<a href="#weak"' + (active === "weak" ? ' aria-current="page"' : "") + '><span class="n">◆</span>Weak spots & fixes</a>';
+    (data.manifest.extras || []).forEach(function (s) { html += '<a href="#' + s.id + '"' + (active === s.id ? ' aria-current="page"' : "") + '><span class="n">' + s.num + '</span>' + esc(s.title) + '</a>'; });
+    html += '<div class="sep"></div>';
     data.manifest.sections.forEach(function (s) {
       if (s.built) html += '<a href="#' + s.id + '"' + (active === s.id ? ' aria-current="page"' : "") + '><span class="n">' + s.num + '</span>' + esc(s.title) + '</a>';
       else html += '<a class="off" aria-disabled="true"><span class="n">' + s.num + '</span>' + esc(s.title) + '</a>';
@@ -519,7 +525,7 @@ a.card:hover { border-color: var(--accent); }
     var m = document.getElementById("main");
     var nWeak = sec.questions.filter(function (q) { return q.weak; }).length;
     var fixes = data.fixes.filter(function (f) { return f.section === id; });
-    var html = '<p class="eyebrow">Section ' + sm.num + '</p><h1>' + esc(sec.title) + '</h1><p class="lede">' + sec.oneLiner + '</p>';
+    var html = '<p class="eyebrow">' + (sm.eyebrow ? esc(sm.eyebrow) : 'Section ' + sm.num) + '</p><h1>' + esc(sec.title) + '</h1><p class="lede">' + sec.oneLiner + '</p>';
     html += '<div class="actions" style="margin-top:14px"><span class="badge plain">' + sec.questions.length + ' questions</span>' + (st.best !== null ? '<span class="badge good">best ' + st.best + '%</span>' : "") + '</div>';
     html += '<div class="tabs" role="tablist"><button class="tab" role="tab" id="tab-study" aria-selected="' + (ui.tab === "study") + '">Study notes</button><button class="tab" role="tab" id="tab-quiz" aria-selected="' + (ui.tab === "quiz") + '">Quiz</button>' + (sec.drills && sec.drills.length ? '<button class="tab" role="tab" id="tab-drills" aria-selected="' + (ui.tab === "drills") + '">Drills</button>' : "") + '</div><div id="pane"></div>';
     m.innerHTML = html;
