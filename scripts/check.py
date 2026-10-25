@@ -5,7 +5,7 @@ Usage: python3 scripts/check.py            (checks every built section)
        python3 scripts/check.py vpc hybrid (checks these sections, built or not)
 Exits 1 on any error so CI and the Claude hook can block bad content.
 """
-import json, os, sys
+import json, os, re, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 C = os.path.join(ROOT, "content")
@@ -66,6 +66,8 @@ for s in targets:
         if not q.get("multi") and len(ans) != 1: err(qid, "several answers but not multi")
         for o in opts:
             if not o.get("t") or not o.get("why"): err(qid, "option missing text or why")
+        # Question text is rendered as HTML (for <b> keywords); options and whys are escaped.
+        if re.sub(r"</?(b|code)>", "", q.get("q", "")).count("<"): err(qid, "question text has HTML other than <b>/<code>")
         if q.get("weak") and q["weak"] not in weak: err(qid, f"unknown weak {q['weak']}")
         if q.get("fix") and q["fix"] not in fixes: err(qid, f"unknown fix {q['fix']}")
 

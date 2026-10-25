@@ -264,6 +264,15 @@ a.card:hover { border-color: var(--accent); }
 .stat { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: var(--surface); }
 .stat b { display: block; font-family: var(--f-display); font-size: 28px; font-variant-numeric: tabular-nums; }
 .stat span { font-size: 13px; color: var(--muted); }
+.xrow { display: grid; grid-template-columns: minmax(0, 1fr) 90px 56px; gap: 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14.5px; }
+.xrow .cnt { text-align: right; font-variant-numeric: tabular-nums; }
+.xbar { height: 8px; border-radius: 4px; background: var(--line); position: relative; overflow: hidden; }
+.xbar i { position: absolute; inset: 0 auto 0 0; background: var(--accent); }
+.xrow.low .xbar i { background: var(--fix); }
+.xmiss { border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; background: var(--surface); }
+.xmiss summary { cursor: pointer; font-size: 14.5px; }
+.xmiss p { margin: 8px 0 0; font-size: 14.5px; }
+.xclock { font-family: var(--f-mono); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .missed { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 14.5px; }
 .note { font-size: 13.5px; color: var(--muted); }
 @media (prefers-reduced-motion: reduce) { .progress i { transition: none; } }
@@ -348,7 +357,7 @@ a.card:hover { border-color: var(--accent); }
   "use strict";
   var KEY = "saa-field-notes:v1";
   var data = { manifest: null, weak: [], fixes: [], sections: {}, svgs: {} };
-  var ui = { tab: "study", quiz: null, drill: null, fixFilter: "all" };
+  var ui = { tab: "study", quiz: null, drill: null, exam: null, fixFilter: "all" };
 
   function load() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } }
   function save(s) { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} }
@@ -407,7 +416,7 @@ a.card:hover { border-color: var(--accent); }
 
   function route() {
     var h = (location.hash || "").replace("#", ""), parts = h.split("--");
-    var id = data.sections[parts[0]] ? parts[0] : (h === "weak" ? "weak" : "contents");
+    var id = data.sections[parts[0]] ? parts[0] : (h === "weak" || h === "exam" ? h : "contents");
     var sub = data.sections[id] ? (parts[1] || "") : "";
     ui.quiz = null; ui.drill = null; ui.tab = sub === "quiz" ? "quiz" : (sub === "drills" ? "drills" : "study");
     closeMenu(); stopTimer();
@@ -415,6 +424,7 @@ a.card:hover { border-color: var(--accent); }
     var where = document.getElementById("where");
     if (id === "contents") { where.innerHTML = "<b>Contents</b>"; renderContents(); }
     else if (id === "weak") { where.innerHTML = "<b>Weak spots & fixes</b>"; renderHome(); }
+    else if (id === "exam") { ui.exam = null; where.innerHTML = "<b>Mock exam</b>"; renderExam(); }
     else { where.innerHTML = '<b>' + secMeta(id).num + ' · ' + esc(data.sections[id].title) + '</b>'; renderSection(id); }
     window.scrollTo(0, 0);
     if (sub && sub !== "quiz" && sub !== "drills") { var t = document.getElementById(id + "--" + sub); if (t) t.scrollIntoView(); }
@@ -441,6 +451,7 @@ a.card:hover { border-color: var(--accent); }
       }
     });
     (data.manifest.extras || []).forEach(function (s) { if (data.sections[s.id]) html += tocSec(s, data.sections[s.id]); });
+    html += '<div class="toc-sec" data-text="mock exam full practice test mixed"><span class="num">▶</span><h2><a href="#exam">Mock exam</a></h2><div class="toc-topics"><a class="go" href="#exam">' + EXAM_N + ' mixed questions from every section · 130 min</a></div></div>';
     html += '</div>';
     m.innerHTML = html;
     document.getElementById("toc-q").addEventListener("input", function () {
@@ -461,6 +472,7 @@ a.card:hover { border-color: var(--accent); }
     html += '<div class="sep"></div>';
     html += '<a href="#weak"' + (active === "weak" ? ' aria-current="page"' : "") + '><span class="n">◆</span>Weak spots & fixes</a>';
     (data.manifest.extras || []).forEach(function (s) { html += '<a href="#' + s.id + '"' + (active === s.id ? ' aria-current="page"' : "") + '><span class="n">' + s.num + '</span>' + esc(s.title) + '</a>'; });
+    html += '<a href="#exam"' + (active === "exam" ? ' aria-current="page"' : "") + '><span class="n">▶</span>Mock exam</a>';
     function sel(id, label, cur, opts) { return '<div class="skin"><label for="' + id + '">' + label + '</label><select id="' + id + '">' + opts.map(function (o) { return '<option value="' + o[0] + '"' + (cur === o[0] ? " selected" : "") + '>' + o[1] + '</option>'; }).join("") + '</select></div>'; }
     html += '<div class="sep"></div>' + sel("skin", "Style", skin, [["notebook", "Notebook"], ["blueprint", "Blueprint"], ["terminal", "Terminal"]]) + sel("mode", "Mode", mode, [["auto", "Auto (system)"], ["light", "Light"], ["dark", "Dark"]]);
     r.innerHTML = html;
@@ -784,7 +796,7 @@ a.card:hover { border-color: var(--accent); }
     var w = q.weak && weakById(q.weak), f = q.fix && fixById(q.fix);
     var html = '<div class="quiz"><div class="qhead"><span class="cnt">Question ' + (z.i + 1) + ' of ' + z.order.length + '</span><span class="actions">' +
       "" + '</span></div>' +
-      '<div class="progress"><i style="width:' + Math.round(z.i / z.order.length * 100) + '%"></i></div><div class="qcard"><p class="qtext">' + esc(q.q) + '</p>' +
+      '<div class="progress"><i style="width:' + Math.round(z.i / z.order.length * 100) + '%"></i></div><div class="qcard"><p class="qtext">' + q.q + '</p>' +
       (multi ? '<p class="note" style="margin:0">Choose ' + need + '.</p>' : "") + '<div class="opts">';
     ord.forEach(function (k, pos) {
       var o = q.options[k], picked = z.picked.indexOf(k) >= 0, cls = "";
@@ -851,6 +863,126 @@ a.card:hover { border-color: var(--accent); }
     document.getElementById("retry").addEventListener("click", function () { startQuiz(sec, "missed"); renderQuiz(sec); });
     document.getElementById("again").addEventListener("click", function () { startQuiz(sec, "all"); renderQuiz(sec); });
     document.getElementById("notes").addEventListener("click", function () { ui.tab = "study"; ui.quiz = null; renderSection(sec.id); });
+  }
+
+  /* ---------- mock exam: generated from the section banks (ADR 0005) ---------- */
+  var EXAM_N = 65, EXAM_MIN = 130;
+  function examState() { store.exam = store.exam || { missed: [], best: null, runs: 0 }; return store.exam; }
+  function examPools() {
+    return data.manifest.sections.filter(function (s) { return data.sections[s.id]; }).concat(data.manifest.extras || [])
+      .map(function (s) { return { s: s, qs: data.sections[s.id].questions }; });
+  }
+  function qById(id) { var hit = null; examPools().forEach(function (p) { p.qs.forEach(function (q) { if (q.id === id) hit = { q: q, s: p.s }; }); }); return hit; }
+  function startExam(mode) {
+    var order = [];
+    if (mode === "missed") order = examState().missed.map(qById).filter(Boolean);
+    else {
+      // Round-robin over shuffled pools so every section gets an even share.
+      var pools = examPools().map(function (p) { return shuffle(p.qs).map(function (q) { return { q: q, s: p.s }; }); });
+      for (var r = 0; order.length < EXAM_N && pools.some(function (p) { return p.length > r; }); r++)
+        shuffle(pools).forEach(function (p) { if (p[r] && order.length < EXAM_N) order.push(p[r]); });
+      order = shuffle(order);
+    }
+    ui.exam = { mode: mode, order: order, i: 0, picks: {}, timed: mode === "all" && document.getElementById("x-timed").checked, left: EXAM_MIN * 60, done: false };
+    ui.exam.optOrder = order.map(function (it) { return shuffle(it.q.options.map(function (_, k) { return k; })); });
+    if (ui.exam.timed) {
+      var z = ui.exam;
+      timer = setInterval(function () {
+        z.left--;
+        var c = document.getElementById("x-clock"); if (c) c.textContent = clock(z.left) + " left";
+        if (z.left <= 0) { stopTimer(); finishExam(); }
+      }, 1000);
+    }
+    renderExam();
+  }
+  function clock(t) { var h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), s = t % 60; return h + ":" + (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s; }
+  function isRight(q, pick) { return !!pick && pick.length === q.answer.length && pick.every(function (k) { return q.answer.indexOf(k) >= 0; }); }
+
+  function finishExam() {
+    var z = ui.exam, st = examState(); if (z.done) return;
+    stopTimer(); z.done = true;
+    z.order.forEach(function (it) {
+      var ok = isRight(it.q, z.picks[it.q.id]);
+      // Misses also land in that section's own retry list.
+      [st.missed, secState(it.s.id).missed].forEach(function (list) { var i = list.indexOf(it.q.id); if (!ok && i < 0) list.push(it.q.id); if (ok && i >= 0) list.splice(i, 1); });
+    });
+    var right = z.order.filter(function (it) { return isRight(it.q, z.picks[it.q.id]); }).length;
+    z.pct = Math.round(right / z.order.length * 100); z.right = right;
+    if (z.mode === "all") { st.runs++; st.best = st.best === null ? z.pct : Math.max(st.best, z.pct); }
+    save(store); renderExam();
+  }
+
+  function renderExam() {
+    var m = document.getElementById("main"), z = ui.exam, st = examState();
+    var head = '<p class="eyebrow">Across sections</p><h1>Mock exam</h1>';
+    if (!z) {
+      m.innerHTML = head + '<p class="lede">' + EXAM_N + ' questions mixed from every section, like the real exam. Nothing tells you which topic a question is from, so you have to spot it yourself. You see the answers at the end.</p>' +
+        '<div class="quiz" style="margin-top:18px"><label class="note"><input type="checkbox" id="x-timed" checked> Timed: ' + EXAM_MIN + ' minutes, the real exam\'s limit</label>' +
+        '<div class="actions"><button class="btn primary" data-x="all">Start mock exam · ' + EXAM_N + ' questions</button><button class="btn" data-x="missed"' + (st.missed.length ? "" : " disabled") + '>Retry missed (' + st.missed.length + ')</button></div>' +
+        (st.best !== null ? '<p class="note">Best run: ' + st.best + '% · runs: ' + st.runs + '</p>' : "") +
+        '<p class="note">The real exam has 65 questions, 15 of them unscored, and a pass mark of 720 out of 1000 (scaled). Treat about 72% here as the line.</p></div>';
+      m.querySelectorAll("[data-x]").forEach(function (b) { b.addEventListener("click", function () { startExam(b.getAttribute("data-x")); }); });
+      return;
+    }
+    if (z.done) return renderExamResults();
+    var it = z.order[z.i], q = it.q, ord = z.optOrder[z.i], need = q.answer.length, pick = z.picks[q.id] || [];
+    var answered = Object.keys(z.picks).filter(function (k) { return z.picks[k].length; }).length;
+    var html = head + '<div class="quiz" style="margin-top:14px"><div class="qhead"><span class="cnt">Question ' + (z.i + 1) + ' of ' + z.order.length + ' · ' + answered + ' answered</span>' +
+      (z.timed ? '<span class="xclock" id="x-clock" role="timer">' + clock(z.left) + ' left</span>' : "") + '</div>' +
+      '<div class="progress"><i style="width:' + Math.round(z.i / z.order.length * 100) + '%"></i></div><div class="qcard"><p class="qtext">' + q.q + '</p>' +
+      (q.multi ? '<p class="note" style="margin:0">Choose ' + need + '.</p>' : "") + '<div class="opts">';
+    ord.forEach(function (k, pos) {
+      html += '<button class="opt" data-k="' + k + '" aria-pressed="' + (pick.indexOf(k) >= 0) + '"><span class="l">' + "ABCDE"[pos] + '</span><span>' + esc(q.options[k].t) + '</span></button>';
+    });
+    var last = z.i + 1 >= z.order.length;
+    html += '</div><div class="actions"><button class="btn" id="x-prev"' + (z.i ? "" : " disabled") + '>Back</button><button class="btn primary" id="x-next">' + (last ? "Finish and see results" : "Next") + '</button></div></div>' +
+      '<div class="actions"><button class="btn" id="x-end">' + (last ? "Quit" : "Finish now") + '</button></div></div>';
+    m.innerHTML = html;
+    m.querySelectorAll(".opt").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var k = +b.getAttribute("data-k"), p = (z.picks[q.id] || []).slice(), at = p.indexOf(k);
+        if (q.multi) { if (at >= 0) p.splice(at, 1); else if (p.length < need) p.push(k); } else p = [k];
+        z.picks[q.id] = p; renderExam();
+        var again = m.querySelector('.opt[data-k="' + k + '"]'); if (again) again.focus();
+      });
+    });
+    function go(d) { z.i += d; renderExam(); var t = m.querySelector(".qtext"); if (t) { t.setAttribute("tabindex", "-1"); t.focus(); } }
+    document.getElementById("x-prev").addEventListener("click", function () { go(-1); });
+    document.getElementById("x-next").addEventListener("click", function () { if (last) finishExam(); else go(1); });
+    document.getElementById("x-end").addEventListener("click", function () {
+      if (last) { stopTimer(); ui.exam = null; renderExam(); return; }
+      if (confirm("Finish now? Unanswered questions count as wrong.")) finishExam();
+    });
+  }
+
+  function renderExamResults() {
+    var z = ui.exam, st = examState(), m = document.getElementById("main");
+    var by = {};
+    z.order.forEach(function (it) { var b = by[it.s.id] = by[it.s.id] || { s: it.s, n: 0, ok: 0 }; b.n++; if (isRight(it.q, z.picks[it.q.id])) b.ok++; });
+    var rows = Object.keys(by).map(function (k) { return by[k]; }).sort(function (a, b) { return a.ok / a.n - b.ok / b.n; });
+    var missed = z.order.filter(function (it) { return !isRight(it.q, z.picks[it.q.id]); });
+    var html = '<p class="eyebrow">Across sections</p><h1>' + (z.pct >= 72 ? "Above the pass line." : "Below the pass line for now.") + '</h1>' +
+      '<div class="quiz" style="margin-top:14px"><div class="summary"><div class="stat"><b>' + z.pct + '%</b><span>score (pass ≈ 72%)</span></div><div class="stat"><b>' + z.right + '/' + z.order.length + '</b><span>correct</span></div>' +
+      (z.timed ? '<div class="stat"><b>' + clock(EXAM_MIN * 60 - z.left) + '</b><span>time used</span></div>' : "") + '</div>' +
+      '<h3>By section, weakest first</h3><div>' + rows.map(function (r) {
+        var p = Math.round(r.ok / r.n * 100);
+        return '<div class="xrow' + (p < 72 ? " low" : "") + '"><a href="#' + r.s.id + '">' + esc(r.s.title) + '</a><div class="xbar" role="img" aria-label="' + p + '% correct"><i style="width:' + p + '%"></i></div><span class="cnt">' + r.ok + '/' + r.n + '</span></div>';
+      }).join("") + '</div>';
+    if (missed.length) {
+      html += '<h3>Review what you missed (' + missed.length + ')</h3><div class="section-gap" style="gap:8px">' + missed.map(function (it) {
+        var q = it.q, pick = z.picks[q.id] || [];
+        var yours = pick.length ? pick.map(function (k) { return esc(q.options[k].t); }).join("; ") : "No answer";
+        return '<details class="xmiss"><summary>' + q.q + ' <span class="cnt">· ' + esc(it.s.title) + '</span></summary>' +
+          '<p><span class="verdict no">You picked:</span> ' + yours + (pick.length ? ' <span class="note">· ' + pick.map(function (k) { return esc(q.options[k].why); }).join(" ") + '</span>' : "") + '</p>' +
+          q.answer.map(function (k) { return '<p><span class="verdict ok">Answer:</span> ' + esc(q.options[k].t) + ' <span class="note">· ' + esc(q.options[k].why) + '</span></p>'; }).join("") + '</details>';
+      }).join("") + '</div>';
+    }
+    html += '<div class="actions"><button class="btn primary" id="x-retry"' + (st.missed.length ? "" : " disabled") + '>Retry missed (' + st.missed.length + ')</button><button class="btn" id="x-new">New mock exam</button></div>' +
+      '<p class="note">Missed questions are also added to each section\'s own retry list.</p></div>';
+    m.innerHTML = html;
+    document.getElementById("x-retry").addEventListener("click", function () { startExam("missed"); });
+    document.getElementById("x-new").addEventListener("click", function () { ui.exam = null; renderExam(); });
+    say("Mock exam finished. " + z.pct + " percent.");
   }
 })();
 </script>

@@ -7,6 +7,8 @@ Each section has:
 - **Quiz**: 20 random scenario questions, with an explanation for every option and a "retry missed" list.
 - **Drills**: quick interactive rounds (this-or-that, match-up, sort into boxes, spot the keyword) for services that look alike.
 
+A **mock exam** mixes 65 questions from every section, with an optional 130-minute timer, a score by section and a review of what you missed.
+
 Three styles (Notebook, Blueprint, Terminal) with light and dark modes. Progress is saved in your browser only.
 
 ## Run it locally
