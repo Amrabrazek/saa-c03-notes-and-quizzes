@@ -13,7 +13,7 @@ Free, public study notes + quizzes + drills for the AWS SAA-C03 exam, built from
 - `manifest.json` `extras`: cross-section pages (e.g. `mixups`) that use the section format; see ADR 0003.
 - `content/<id>.json`: one section = `notes` blocks + `questions` + `drills`. `content/edge.json` is the reference.
 - `content/weakspots.json`, `content/corrections.json`: Amr's weak spots and the fixes to his old guide.
-- `content/diagrams/*.svg`: inlined at runtime; use the `.dg-*` classes so all 3 styles × 2 modes work.
+- `content/diagrams/*.svg`: inlined at runtime; use the `.dg-*` classes so all 3 styles × 2 modes work. Add `"big": true` to a diagram block for wide overview diagrams (full-size view, ADR 0004).
 
 ## Content rules
 - Exam-first and plain. Every topic ends with an `exam` block (keyword → answer).

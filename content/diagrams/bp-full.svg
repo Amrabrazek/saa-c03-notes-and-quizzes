@@ -1,0 +1,134 @@
+<svg viewBox="0 0 1000 830" role="img" aria-label="The whole system. Users look up DNS in Route 53, then reach a CloudFront edge with WAF, or Global Accelerator for TCP or UDP. On a cache miss CloudFront goes through the internet gateway to one ALB with nodes in two AZs. The ALB sends traffic to EC2 in an Auto Scaling group in private app subnets. The app reads and writes the RDS primary, which copies synchronously to a Multi-AZ standby in the other AZ, and uses ElastiCache. NAT gateways in public subnets give private instances outbound internet. Outside the VPC but in the same region, S3 and DynamoDB are reached through a free gateway endpoint, and SQS, SNS, KMS and Secrets Manager through paid interface endpoints. Lambda and CloudWatch are also regional. Region B is the disaster recovery copy: a cross-region RDS read replica to promote, an S3 Cross-Region Replication bucket, and a small or switched-off copy of the ALB and Auto Scaling group that Route 53 fails over to." xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="bf-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="dg-head"/></marker>
+  </defs>
+  <rect x="150" y="10" width="830" height="116" rx="12" class="dg-box dg-dash" style="fill:none"/>
+  <text x="164" y="118" class="dg-s">GLOBAL · edge locations, not in any region</text>
+  <rect x="20" y="50" width="104" height="56" rx="8" class="dg-box"/>
+  <text x="72" y="83" text-anchor="middle" class="dg-t">Users</text>
+  <rect x="180" y="50" width="180" height="56" rx="8" class="dg-box"/>
+  <text x="270" y="75" text-anchor="middle" class="dg-t">Route 53</text>
+  <text x="270" y="93" text-anchor="middle" class="dg-s">DNS: which IP?</text>
+  <rect x="400" y="50" width="280" height="56" rx="8" class="dg-acc"/>
+  <text x="540" y="75" text-anchor="middle" class="dg-t">CloudFront + WAF</text>
+  <text x="540" y="93" text-anchor="middle" class="dg-s">caches HTTP(S), filters at the edge</text>
+  <rect x="720" y="50" width="240" height="56" rx="8" class="dg-box"/>
+  <text x="840" y="75" text-anchor="middle" class="dg-t">Global Accelerator</text>
+  <text x="840" y="93" text-anchor="middle" class="dg-s">2 anycast IPs · any TCP/UDP</text>
+  <path d="M124 78H180" class="dg-l" marker-end="url(#bf-arrow)"/>
+  <text x="140" y="72" text-anchor="middle" class="dg-s">①</text>
+  <path d="M72 50V30H540V50" class="dg-l" marker-end="url(#bf-arrow)"/>
+  <text x="300" y="25" text-anchor="middle" class="dg-s">② HTTPS to the nearest edge</text>
+  <rect x="20" y="150" width="960" height="520" rx="12" class="dg-box" style="fill:none"/>
+  <text x="34" y="170" class="dg-t">REGION A · us-east-1 · primary</text>
+  <path d="M540 106V166" class="dg-l" marker-end="url(#bf-arrow)"/>
+  <text x="532" y="145" text-anchor="end" class="dg-s">③ cache miss → origin</text>
+  <path d="M840 106V138H590V166" class="dg-l dg-dashl" marker-end="url(#bf-arrow)"/>
+  <text x="850" y="145" class="dg-s">or GA → ALB / NLB</text>
+  <rect x="40" y="180" width="630" height="475" rx="12" class="dg-box dg-dash" style="fill:none"/>
+  <text x="54" y="200" class="dg-s">VPC · 10.0.0.0/16</text>
+  <rect x="470" y="166" width="140" height="30" rx="8" class="dg-acc"/>
+  <text x="540" y="186" text-anchor="middle" class="dg-t">Internet gateway</text>
+  <rect x="60" y="210" width="290" height="435" rx="12" class="dg-box dg-dash" style="fill:none"/>
+  <text x="74" y="228" class="dg-s">AZ-a</text>
+  <rect x="70" y="236" width="270" height="120" rx="12" class="dg-box" style="fill:none"/>
+  <text x="86" y="256" class="dg-t">Public subnet</text>
+  <text x="86" y="272" class="dg-s">0.0.0.0/0 → internet gateway</text>
+  <rect x="90" y="322" width="104" height="28" rx="8" class="dg-box"/>
+  <text x="142" y="341" text-anchor="middle" class="dg-t">NAT gateway</text>
+  <rect x="70" y="368" width="270" height="108" rx="12" class="dg-box" style="fill:none"/>
+  <text x="86" y="388" class="dg-t">Private app subnet</text>
+  <text x="86" y="404" class="dg-s">0.0.0.0/0 → NAT gateway</text>
+  <rect x="90" y="414" width="230" height="50" rx="8" class="dg-box"/>
+  <text x="205" y="436" text-anchor="middle" class="dg-t">EC2 · Auto Scaling group</text>
+  <text x="205" y="454" text-anchor="middle" class="dg-s">SG: app port from ALB SG</text>
+  <rect x="70" y="488" width="270" height="157" rx="12" class="dg-box" style="fill:none"/>
+  <text x="86" y="508" class="dg-t">Data subnet</text>
+  <rect x="360" y="210" width="290" height="435" rx="12" class="dg-box dg-dash" style="fill:none"/>
+  <text x="374" y="228" class="dg-s">AZ-b</text>
+  <rect x="370" y="236" width="270" height="120" rx="12" class="dg-box" style="fill:none"/>
+  <text x="386" y="256" class="dg-t">Public subnet</text>
+  <text x="386" y="272" class="dg-s">0.0.0.0/0 → internet gateway</text>
+  <rect x="390" y="322" width="104" height="28" rx="8" class="dg-box"/>
+  <text x="442" y="341" text-anchor="middle" class="dg-t">NAT gateway</text>
+  <rect x="370" y="368" width="270" height="108" rx="12" class="dg-box" style="fill:none"/>
+  <text x="386" y="388" class="dg-t">Private app subnet</text>
+  <text x="386" y="404" class="dg-s">0.0.0.0/0 → NAT gateway</text>
+  <rect x="390" y="414" width="230" height="50" rx="8" class="dg-box"/>
+  <text x="505" y="436" text-anchor="middle" class="dg-t">EC2 · Auto Scaling group</text>
+  <text x="505" y="454" text-anchor="middle" class="dg-s">SG: app port from ALB SG</text>
+  <rect x="370" y="488" width="270" height="157" rx="12" class="dg-box" style="fill:none"/>
+  <text x="386" y="508" class="dg-t">Data subnet</text>
+  <rect x="160" y="284" width="450" height="32" rx="8" class="dg-acc"/>
+  <text x="385" y="305" text-anchor="middle" class="dg-t">ALB · one load balancer, a node in each AZ</text>
+  <path d="M540 196V284" class="dg-l" marker-end="url(#bf-arrow)"/>
+  <text x="548" y="236" class="dg-s">④</text>
+  <path d="M230 316V414" class="dg-l" marker-end="url(#bf-arrow)"/>
+  <path d="M530 316V414" class="dg-l" marker-end="url(#bf-arrow)"/>
+  <text x="238" y="352" class="dg-s">⑤</text>
+  <rect x="90" y="518" width="230" height="48" rx="8" class="dg-box"/>
+  <text x="205" y="539" text-anchor="middle" class="dg-t">RDS primary</text>
+  <text x="205" y="557" text-anchor="middle" class="dg-s">SG: 3306 from EC2 SG</text>
+  <rect x="390" y="518" width="230" height="48" rx="8" class="dg-box dg-dash"/>
+  <text x="505" y="539" text-anchor="middle" class="dg-t">RDS standby</text>
+  <text x="505" y="557" text-anchor="middle" class="dg-s">Multi-AZ · sync · not readable</text>
+  <path d="M320 542H390" class="dg-l" marker-end="url(#bf-arrow)" marker-start="url(#bf-arrow)"/>
+  <text x="355" y="536" text-anchor="middle" class="dg-s">sync</text>
+  <rect x="90" y="584" width="530" height="48" rx="8" class="dg-acc2"/>
+  <text x="355" y="605" text-anchor="middle" class="dg-t">ElastiCache (Redis) · nodes in both AZs</text>
+  <text x="355" y="623" text-anchor="middle" class="dg-s">SG: 6379 from EC2 SG</text>
+  <path d="M180 464V518" class="dg-l" marker-end="url(#bf-arrow)"/>
+  <text x="188" y="498" class="dg-s">⑥ read / write</text>
+  <path d="M80 440V608H90" class="dg-l" marker-end="url(#bf-arrow)"/>
+  <path d="M90 440H80" class="dg-l"/>
+  <rect x="690" y="180" width="275" height="475" rx="12" class="dg-box dg-dash" style="fill:none"/>
+  <text x="704" y="200" class="dg-s">Regional, outside any VPC</text>
+  <rect x="700" y="212" width="255" height="102" rx="12" class="dg-box" style="fill:none"/>
+  <text x="714" y="232" class="dg-s">Gateway endpoint · free</text>
+  <rect x="712" y="244" width="112" height="56" rx="8" class="dg-box"/>
+  <text x="768" y="269" text-anchor="middle" class="dg-t">S3</text>
+  <text x="768" y="287" text-anchor="middle" class="dg-s">objects</text>
+  <rect x="832" y="244" width="112" height="56" rx="8" class="dg-box"/>
+  <text x="888" y="269" text-anchor="middle" class="dg-t">DynamoDB</text>
+  <text x="888" y="287" text-anchor="middle" class="dg-s">key-value</text>
+  <rect x="700" y="326" width="255" height="176" rx="12" class="dg-box" style="fill:none"/>
+  <text x="714" y="346" class="dg-s">Interface endpoint · paid</text>
+  <rect x="712" y="358" width="112" height="56" rx="8" class="dg-box"/>
+  <text x="768" y="383" text-anchor="middle" class="dg-t">SQS</text>
+  <text x="768" y="401" text-anchor="middle" class="dg-s">queue</text>
+  <rect x="832" y="358" width="112" height="56" rx="8" class="dg-box"/>
+  <text x="888" y="383" text-anchor="middle" class="dg-t">SNS</text>
+  <text x="888" y="401" text-anchor="middle" class="dg-s">fan-out</text>
+  <rect x="712" y="426" width="112" height="56" rx="8" class="dg-box"/>
+  <text x="768" y="451" text-anchor="middle" class="dg-t">KMS</text>
+  <text x="768" y="469" text-anchor="middle" class="dg-s">keys</text>
+  <rect x="832" y="426" width="112" height="56" rx="8" class="dg-box"/>
+  <text x="888" y="451" text-anchor="middle" class="dg-t">Secrets Mgr</text>
+  <text x="888" y="469" text-anchor="middle" class="dg-s">rotates creds</text>
+  <text x="712" y="528" class="dg-s">Also regional</text>
+  <rect x="712" y="538" width="112" height="56" rx="8" class="dg-box"/>
+  <text x="768" y="563" text-anchor="middle" class="dg-t">Lambda</text>
+  <text x="768" y="581" text-anchor="middle" class="dg-s">serverless</text>
+  <rect x="832" y="538" width="112" height="56" rx="8" class="dg-box"/>
+  <text x="888" y="563" text-anchor="middle" class="dg-t">CloudWatch</text>
+  <text x="888" y="581" text-anchor="middle" class="dg-s">alarms → ASG</text>
+  <path d="M620 440H700" class="dg-l" marker-end="url(#bf-arrow)"/>
+  <path d="M676 440V263H700" class="dg-l" marker-end="url(#bf-arrow)"/>
+  <text x="828" y="628" text-anchor="middle" class="dg-s">private path: no internet, no NAT</text>
+  <path d="M505 655V712" class="dg-l" marker-end="url(#bf-arrow)"/>
+  <text x="513" y="690" class="dg-s">cross-region read replica · async</text>
+  <path d="M828 655V712" class="dg-l" marker-end="url(#bf-arrow)"/>
+  <text x="836" y="690" class="dg-s">S3 CRR</text>
+  <rect x="20" y="696" width="960" height="124" rx="12" class="dg-box dg-dash" style="fill:none"/>
+  <text x="34" y="808" class="dg-t">REGION B · eu-west-1 · disaster recovery</text>
+  <rect x="40" y="712" width="300" height="64" rx="8" class="dg-box dg-dash"/>
+  <text x="190" y="741" text-anchor="middle" class="dg-t">ALB → Auto Scaling group</text>
+  <text x="190" y="759" text-anchor="middle" class="dg-s">small or off: pilot light / warm standby</text>
+  <rect x="380" y="712" width="250" height="64" rx="8" class="dg-box"/>
+  <text x="505" y="741" text-anchor="middle" class="dg-t">RDS read replica</text>
+  <text x="505" y="759" text-anchor="middle" class="dg-s">promote if region A fails</text>
+  <rect x="690" y="712" width="270" height="64" rx="8" class="dg-box"/>
+  <text x="825" y="741" text-anchor="middle" class="dg-t">S3 bucket</text>
+  <text x="825" y="759" text-anchor="middle" class="dg-s">CRR destination</text>
+  <text x="560" y="808" class="dg-s">Route 53 failover record sends users here</text>
+</svg>
