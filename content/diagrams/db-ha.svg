@@ -1,0 +1,35 @@
+<svg viewBox="0 0 720 330" role="img" aria-label="RDS high availability versus read scaling. In region A, the primary copies synchronously to a Multi-AZ standby in another AZ, which is not readable and takes over automatically. The primary also copies asynchronously to read replicas, which are readable and are promoted by hand. A cross-region read replica in region B gives disaster recovery. Aurora Global Database replicates storage to region B in under a second and can promote in about a minute." xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="dh-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="dg-head"/></marker>
+  </defs>
+  <rect x="10" y="10" width="460" height="250" rx="10" class="dg-box dg-dash" style="fill:none"/>
+  <text x="24" y="32" class="dg-s">Region A</text>
+  <rect x="500" y="10" width="210" height="250" rx="10" class="dg-box dg-dash" style="fill:none"/>
+  <text x="514" y="32" class="dg-s">Region B</text>
+  <rect x="30" y="50" width="160" height="60" rx="8" class="dg-acc"/>
+  <text x="110" y="76" text-anchor="middle" class="dg-t">Primary</text>
+  <text x="110" y="96" text-anchor="middle" class="dg-s">AZ 1 · reads + writes</text>
+  <rect x="30" y="180" width="160" height="60" rx="8" class="dg-box"/>
+  <text x="110" y="206" text-anchor="middle" class="dg-t">Multi-AZ standby</text>
+  <text x="110" y="226" text-anchor="middle" class="dg-s">AZ 2 · not readable</text>
+  <rect x="290" y="50" width="160" height="60" rx="8" class="dg-acc2"/>
+  <text x="370" y="76" text-anchor="middle" class="dg-t">Read replica</text>
+  <text x="370" y="96" text-anchor="middle" class="dg-s">any AZ · readable</text>
+  <rect x="520" y="50" width="170" height="60" rx="8" class="dg-acc2"/>
+  <text x="605" y="76" text-anchor="middle" class="dg-t">Cross-region replica</text>
+  <text x="605" y="96" text-anchor="middle" class="dg-s">async · readable · DR</text>
+  <rect x="520" y="180" width="170" height="60" rx="8" class="dg-box"/>
+  <text x="605" y="206" text-anchor="middle" class="dg-t">Aurora Global</text>
+  <text x="605" y="226" text-anchor="middle" class="dg-s">secondary · &lt;1 s lag</text>
+  <path d="M110 110V180" class="dg-l" marker-end="url(#dh-arrow)"/>
+  <text x="118" y="140" class="dg-s">sync</text>
+  <text x="118" y="156" class="dg-s">auto failover</text>
+  <path d="M190 80H290" class="dg-l dg-dashl" marker-end="url(#dh-arrow)"/>
+  <text x="240" y="72" text-anchor="middle" class="dg-s">async</text>
+  <path d="M450 80H520" class="dg-l dg-dashl" marker-end="url(#dh-arrow)"/>
+  <path d="M190 120Q350 160 520 205" class="dg-l dg-dashl" marker-end="url(#dh-arrow)"/>
+  <text x="230" y="196" class="dg-s">Aurora: storage-level</text>
+  <text x="230" y="212" class="dg-s">RPO ~1 s</text>
+  <text x="10" y="290" class="dg-s">Multi-AZ = survive an AZ failure (same region). Read replica = more reads, manual promote.</text>
+  <text x="10" y="312" class="dg-s">Other region with RPO ~1 s and RTO ~1 min → Aurora Global Database.</text>
+</svg>
