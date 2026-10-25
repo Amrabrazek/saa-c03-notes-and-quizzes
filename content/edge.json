@@ -497,6 +497,67 @@
      "Shield (Advanced for response team + cost protection)"
     ]
    ]
+  },
+  {
+   "type": "h2",
+   "text": "Where AWS runs: Regions to Outposts"
+  },
+  {
+   "type": "table",
+   "head": [
+    "Place",
+    "What it is",
+    "Pick when"
+   ],
+   "rows": [
+    [
+     "Region",
+     "Area with 3+ AZs",
+     "Compliance, latency, service availability, price"
+    ],
+    [
+     "Availability Zone",
+     "One or more data centers with separate power and network",
+     "High availability inside a region"
+    ],
+    [
+     "Edge location",
+     "CloudFront / Route 53 / Global Accelerator point of presence",
+     "Content close to users"
+    ],
+    [
+     "<b>Local Zone</b>",
+     "AWS compute near a big city",
+     "Single-digit ms to users in that metro"
+    ],
+    [
+     "<b>Wavelength Zone</b>",
+     "AWS inside a telecom 5G network",
+     "Ultra-low latency to mobile devices"
+    ],
+    [
+     "<b>Outposts</b>",
+     "AWS racks in <b>your</b> data center",
+     "Data must stay on-prem, low latency to local systems"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"5G\" + \"mobile\" + ultra-low latency",
+     "Wavelength"
+    ],
+    [
+     "\"run AWS services on-premises\"",
+     "Outposts"
+    ],
+    [
+     "\"low latency for users in one city\"",
+     "Local Zones"
+    ]
+   ]
   }
  ],
  "questions": [
@@ -1022,6 +1083,31 @@
    ],
    "answer": [
     2
+   ]
+  },
+  {
+   "id": "outposts",
+   "q": "A factory must run EC2 and EBS <b>inside its own building</b> with the same AWS APIs, because data can't leave the site.",
+   "options": [
+    {
+     "t": "AWS Outposts",
+     "why": "AWS hardware in your data center."
+    },
+    {
+     "t": "Local Zones",
+     "why": "AWS-run sites in cities, not your building."
+    },
+    {
+     "t": "Wavelength Zones",
+     "why": "Inside telecom 5G networks."
+    },
+    {
+     "t": "Snowball Edge",
+     "why": "Portable devices, not a long-term AWS footprint."
+    }
+   ],
+   "answer": [
+    0
    ]
   }
  ],

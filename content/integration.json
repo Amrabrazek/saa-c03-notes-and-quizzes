@@ -569,6 +569,53 @@
      "Bedrock"
     ]
    ]
+  },
+  {
+   "type": "h2",
+   "text": "Email, user messaging and app hosting"
+  },
+  {
+   "type": "table",
+   "head": [
+    "Trigger",
+    "Answer",
+    "Why / note"
+   ],
+   "rows": [
+    [
+     "Send transactional or bulk <b>email</b>",
+     "<b>SES</b>",
+     "SMTP or API; tracks bounces and complaints"
+    ],
+    [
+     "Targeted campaigns over email, SMS, push",
+     "<b>Pinpoint</b>",
+     "AWS has announced end of support for Pinpoint's engagement features (Oct 2026); SMS and push live on in AWS End User Messaging"
+    ],
+    [
+     "Host and deploy a full-stack web or mobile app from Git",
+     "<b>Amplify</b>",
+     "Hosting + CI/CD + backend (Cognito, AppSync, S3)"
+    ],
+    [
+     "Order of steps across services",
+     "<b>Step Functions</b>",
+     "Standard up to 1 year; Express up to 5 minutes"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"send password reset emails\"",
+     "SES"
+    ],
+    [
+     "\"deploy a React app from GitHub with CI/CD\"",
+     "Amplify Hosting"
+    ]
+   ]
   }
  ],
  "questions": [
@@ -1083,6 +1130,56 @@
     {
      "t": "Redshift in both cases",
      "why": "A warehouse stores data; it doesn't forecast."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "ses",
+   "q": "An app must send <b>order confirmation emails</b> and track bounces, with the <b>least operational overhead</b>.",
+   "options": [
+    {
+     "t": "Amazon SES",
+     "why": "Managed email sending with bounce and complaint tracking."
+    },
+    {
+     "t": "SNS email subscriptions",
+     "why": "For simple notifications to subscribers, not customer email at scale."
+    },
+    {
+     "t": "An SMTP server on EC2",
+     "why": "Servers and reputation to manage."
+    },
+    {
+     "t": "SQS",
+     "why": "A queue, not email delivery."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "amplify",
+   "q": "A small team wants to host a React front end with a serverless backend and <b>auto-deploy on every Git push</b>, with the least setup.",
+   "options": [
+    {
+     "t": "AWS Amplify Hosting",
+     "why": "Built-in CI/CD from Git plus hosting."
+    },
+    {
+     "t": "S3 + CloudFront + a custom pipeline",
+     "why": "Works, but more to build."
+    },
+    {
+     "t": "Elastic Beanstalk",
+     "why": "Server-based app environments."
+    },
+    {
+     "t": "EC2 with Nginx",
+     "why": "Servers to manage."
     }
    ],
    "answer": [

@@ -501,6 +501,128 @@
      "NAT gateway route"
     ]
    ]
+  },
+  {
+   "type": "h2",
+   "text": "Elastic Beanstalk deployments"
+  },
+  {
+   "type": "p",
+   "html": "Beanstalk runs your app on EC2, an ALB and an ASG for you; you pay only for those resources. The exam asks which <b>deployment policy</b> fits."
+  },
+  {
+   "type": "table",
+   "head": [
+    "Policy",
+    "Downtime?",
+    "Capacity during deploy",
+    "Rollback",
+    "Pick when"
+   ],
+   "rows": [
+    [
+     "All at once",
+     "<b>Yes</b>",
+     "Zero for a moment",
+     "Redeploy",
+     "Dev, fastest"
+    ],
+    [
+     "Rolling",
+     "No",
+     "<b>Reduced</b>",
+     "Redeploy",
+     "Save money, can lose some capacity"
+    ],
+    [
+     "Rolling with additional batch",
+     "No",
+     "Full",
+     "Redeploy",
+     "Keep full capacity, small extra cost"
+    ],
+    [
+     "<b>Immutable</b>",
+     "No",
+     "Full (new ASG)",
+     "<b>Terminate the new instances</b>",
+     "Safest in-place rollout"
+    ],
+    [
+     "<b>Blue/green</b>",
+     "No",
+     "Full (new environment)",
+     "<b>Swap the URL back</b>",
+     "Test the new version before switching"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"fastest\" + downtime is fine",
+     "All at once"
+    ],
+    [
+     "\"no downtime, no reduced capacity, quick rollback\"",
+     "Immutable"
+    ],
+    [
+     "\"separate environment, swap URLs\"",
+     "Blue/green"
+    ],
+    [
+     "\"deploy a web app without managing infrastructure\"",
+     "Elastic Beanstalk (or App Runner)"
+    ]
+   ]
+  },
+  {
+   "type": "h2",
+   "text": "Also tested: ECS networking, SNI, instance recovery"
+  },
+  {
+   "type": "table",
+   "head": [
+    "Trigger",
+    "Answer",
+    "Why / note"
+   ],
+   "rows": [
+    [
+     "Each ECS task needs its <b>own security group</b> and IP",
+     "<b>awsvpc</b> network mode",
+     "Each task gets an ENI. Fargate always uses awsvpc. bridge/host share the instance's network"
+    ],
+    [
+     "Many HTTPS domains, each with its own certificate, on <b>one ALB</b>",
+     "<b>SNI</b>",
+     "ALB and NLB pick the cert by hostname; CloudFront supports it too"
+    ],
+    [
+     "Recover an instance automatically when its <b>hardware</b> fails",
+     "<b>CloudWatch alarm on StatusCheckFailed_System → recover</b>",
+     "Keeps instance ID, IPs, Elastic IP and EBS; RAM is lost. Supported types now recover automatically by default"
+    ]
+   ]
+  },
+  {
+   "type": "exam",
+   "items": [
+    [
+     "\"security group per task\"",
+     "awsvpc"
+    ],
+    [
+     "\"multiple certificates on one load balancer\"",
+     "SNI"
+    ],
+    [
+     "\"same instance ID and IP after hardware failure\"",
+     "EC2 auto recovery"
+    ]
+   ]
   }
  ],
  "questions": [
@@ -1009,6 +1131,131 @@
     {
      "t": "Change the termination policy",
      "why": "Decides which instance goes on scale-in, not health."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "eb-immutable",
+   "q": "A Beanstalk app must deploy with <b>no downtime, full capacity</b> throughout, and the <b>fastest rollback</b> if the new version fails health checks, without a second environment.",
+   "options": [
+    {
+     "t": "Immutable",
+     "why": "New instances in a temporary ASG; rollback just terminates them."
+    },
+    {
+     "t": "All at once",
+     "why": "Downtime during the deploy."
+    },
+    {
+     "t": "Rolling",
+     "why": "Runs at reduced capacity."
+    },
+    {
+     "t": "Blue/green",
+     "why": "Works, but needs a second environment, which the brief rules out."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "eb-bluegreen",
+   "q": "A team wants to test a new Beanstalk version in a <b>separate environment</b>, then switch all traffic at once and switch back if needed.",
+   "options": [
+    {
+     "t": "Blue/green with a CNAME (URL) swap",
+     "why": "Two environments; swapping URLs flips traffic both ways."
+    },
+    {
+     "t": "Rolling with additional batch",
+     "why": "Same environment, no separate test."
+    },
+    {
+     "t": "All at once",
+     "why": "No test environment and downtime."
+    },
+    {
+     "t": "Immutable",
+     "why": "Same environment; can't test before traffic arrives."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "awsvpc",
+   "q": "Each ECS task must have its <b>own security group</b> so only the payments task can reach the payments database.",
+   "options": [
+    {
+     "t": "Use the awsvpc network mode",
+     "why": "Each task gets its own ENI and security groups."
+    },
+    {
+     "t": "Use bridge mode with port mapping",
+     "why": "Tasks share the instance's security groups."
+    },
+    {
+     "t": "Use host mode",
+     "why": "Tasks share the instance's network and security groups."
+    },
+    {
+     "t": "Put a NACL around each task",
+     "why": "NACLs apply to subnets, not tasks."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "sni",
+   "q": "One ALB must serve <b>20 HTTPS domains</b>, each with its own certificate, at the <b>lowest cost</b>.",
+   "options": [
+    {
+     "t": "Add all certificates to one HTTPS listener; SNI picks the right one",
+     "why": "ALB supports multiple certificates via SNI."
+    },
+    {
+     "t": "One ALB per domain",
+     "why": "20 load balancers to pay for."
+    },
+    {
+     "t": "One wildcard certificate for all domains",
+     "why": "Only works for subdomains of one domain."
+    },
+    {
+     "t": "Terminate TLS on each instance",
+     "why": "More work, and certs on every server."
+    }
+   ],
+   "answer": [
+    0
+   ]
+  },
+  {
+   "id": "auto-recover",
+   "q": "A single EC2 instance must come back automatically after an underlying <b>hardware failure</b>, keeping its <b>instance ID, private IP and Elastic IP</b>.",
+   "options": [
+    {
+     "t": "A CloudWatch alarm on StatusCheckFailed_System with the recover action",
+     "why": "Moves the instance to healthy hardware and keeps its identity."
+    },
+    {
+     "t": "An ASG with min = max = 1",
+     "why": "Replaces it with a new instance, new ID."
+    },
+    {
+     "t": "A CloudWatch alarm with the reboot action",
+     "why": "Reboot doesn't move it off failed hardware."
+    },
+    {
+     "t": "Hibernate the instance",
+     "why": "Not a recovery mechanism."
     }
    ],
    "answer": [
