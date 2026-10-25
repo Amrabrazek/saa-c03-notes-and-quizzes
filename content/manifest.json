@@ -1,0 +1,66 @@
+{
+  "title": "SAA-C03 Field Notes",
+  "sections": [
+    {
+      "id": "compute",
+      "num": 1,
+      "title": "Compute & scaling",
+      "built": false
+    },
+    {
+      "id": "storage",
+      "num": 2,
+      "title": "Block & file storage",
+      "built": false
+    },
+    {
+      "id": "s3",
+      "num": 3,
+      "title": "S3",
+      "built": false
+    },
+    {
+      "id": "databases",
+      "num": 4,
+      "title": "Databases",
+      "built": false
+    },
+    {
+      "id": "vpc",
+      "num": 5,
+      "title": "VPC core",
+      "built": false
+    },
+    {
+      "id": "hybrid",
+      "num": 6,
+      "title": "Hybrid connectivity",
+      "built": false
+    },
+    {
+      "id": "edge",
+      "num": 7,
+      "title": "Edge & DNS",
+      "built": true,
+      "file": "content/edge.json"
+    },
+    {
+      "id": "integration",
+      "num": 8,
+      "title": "Integration, analytics & ML",
+      "built": false
+    },
+    {
+      "id": "security",
+      "num": 9,
+      "title": "Security & identity",
+      "built": false
+    },
+    {
+      "id": "ops",
+      "num": 10,
+      "title": "Ops, cost, migration & DR",
+      "built": false
+    }
+  ]
+}

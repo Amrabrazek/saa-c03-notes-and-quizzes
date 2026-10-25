@@ -1,0 +1,23 @@
+[
+  { "id": "trio", "title": "CloudFront vs Global Accelerator vs Route 53", "count": 8, "section": "edge", "gist": "Which one caches, which gives static IPs, which fails over without DNS" },
+  { "id": "endpoints", "title": "Gateway vs Interface VPC endpoint", "count": 5, "section": "vpc", "gist": "Only S3 and DynamoDB get the free Gateway type; on-prem needs Interface" },
+  { "id": "kinesis", "title": "Kinesis Data Streams vs Firehose", "count": 5, "section": "integration", "gist": "Custom app = Data Streams; deliver to S3/Redshift = Firehose" },
+  { "id": "dx", "title": "Direct Connect, VPN over DX, VGW vs TGW vs DX Gateway", "count": 5, "section": "hybrid", "gist": "One VPC, many VPCs or many regions" },
+  { "id": "sg-chain", "title": "Security Group chaining", "count": 4, "section": "vpc", "gist": "Reference the SG, not IPs" },
+  { "id": "s3-enc", "title": "S3 / KMS encryption choice", "count": 3, "section": "security", "gist": "Audit = KMS; custom rotation or cross-account = customer managed key" },
+  { "id": "mrk", "title": "KMS multi-region keys + CRR", "count": 3, "section": "security", "gist": "Same key ID across regions; can't convert an existing key" },
+  { "id": "ia-gir", "title": "Standard-IA vs Glacier Instant Retrieval", "count": 3, "section": "s3", "gist": "Storage cost vs retrieval cost" },
+  { "id": "snow-glacier", "title": "Snowball can't land in Glacier directly", "count": 3, "section": "s3", "gist": "Snowball → S3 → 0-day lifecycle" },
+  { "id": "encrypt-existing", "title": "Encrypt an existing EBS volume / RDS DB", "count": 3, "section": "databases", "gist": "Snapshot → encrypted copy → restore" },
+  { "id": "lt-lc", "title": "Launch Template vs Launch Configuration", "count": 3, "section": "compute", "gist": "LC is immutable and deprecated" },
+  { "id": "ami-userdata", "title": "Golden AMI vs User Data", "count": 3, "section": "compute", "gist": "Boot speed vs flexibility" },
+  { "id": "rds-ha", "title": "RDS Multi-AZ vs Read Replica vs cross-region", "count": 3, "section": "databases", "gist": "Sync for HA, async for reads and DR" },
+  { "id": "failover", "title": "Route 53 failover / active-passive", "count": 3, "section": "edge", "gist": "The failover policy is for active-passive only" },
+  { "id": "cost-tools", "title": "Cost tools: who recommends what", "count": 3, "section": "ops", "gist": "Compute Optimizer sizes, it doesn't pick RI/Spot" },
+  { "id": "eventbridge-saas", "title": "EventBridge for SaaS events", "count": 3, "section": "integration", "gist": "SQS/SNS have no SaaS sources" },
+  { "id": "r53-policies", "title": "Geolocation vs Latency vs Geoproximity", "count": 2, "section": "edge", "gist": "Law vs speed vs a bias dial" },
+  { "id": "alias", "title": "Alias vs CNAME vs A record", "count": 2, "section": "edge", "gist": "Apex needs Alias or A, never CNAME" },
+  { "id": "waf", "title": "Where WAF attaches", "count": 2, "section": "edge", "gist": "CloudFront, ALB, API Gateway, AppSync. Not NLB, not EC2" },
+  { "id": "nlb-alb", "title": "NLB private-IP routing, ALB is L7 only", "count": 2, "section": "compute", "gist": "TCP/UDP = NLB" },
+  { "id": "dms", "title": "DMS beyond databases", "count": 2, "section": "ops", "gist": "S3 → Kinesis, CDC to Redshift" }
+]
