@@ -11,13 +11,15 @@
       "id": "storage",
       "num": 2,
       "title": "Block & file storage",
-      "built": false
+      "built": true,
+      "file": "content/storage.json"
     },
     {
       "id": "s3",
       "num": 3,
       "title": "S3",
-      "built": false
+      "built": true,
+      "file": "content/s3.json"
     },
     {
       "id": "databases",
@@ -57,7 +59,8 @@
       "id": "security",
       "num": 9,
       "title": "Security & identity",
-      "built": false
+      "built": true,
+      "file": "content/security.json"
     },
     {
       "id": "ops",
